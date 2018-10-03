@@ -88,7 +88,7 @@ main (int argc, char *argv[])
   Ptr<CustomController> controllerApp = CreateObject<CustomController> ();
   of13Helper->InstallController (controllerNode,controllerApp);
 
-// Create the switch node
+  // Create the switch node
   Ptr<Node> switchNodeUl = CreateObject<Node> ();
   Ptr<Node> switchNodeDl = CreateObject<Node> ();
   Ptr<Node> switchNodeHw = CreateObject<Node> ();
@@ -96,14 +96,14 @@ main (int argc, char *argv[])
 
   Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0);
   Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0);
+  
+  of13Helper->SetDeviceAttribute("PipelineCapacity",StringValue("1Gbps"));
+  of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(128));
   Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0);
+  
+  of13Helper->SetDeviceAttribute("PipelineCapacity",StringValue("10Mbps"));
+  of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(10000));
   Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0);
-
-  switchDeviceHw->SetAttribute("PipelineCapacity",DataRateValue("1Gbps"));
-  switchDeviceSw->SetAttribute("PipelineCapacity",DataRateValue("10Mbps"));
-
-  switchDeviceHw->SetAttribute("FlowTableSize",UintegerValue(128));
-  switchDeviceSw->SetAttribute("FlowTableSize",UintegerValue(10000));
 
   NetDeviceContainer hw2ulLink = csmaHelper.Install (NodeContainer (switchNodeHw, switchNodeUl));
   uint32_t hw2ulPort = switchDeviceHw->AddSwitchPort (hw2ulLink.Get (0))->GetPortNo ();
