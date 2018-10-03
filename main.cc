@@ -37,7 +37,11 @@ host 1 para host 0: switches 3,4,1
 #include <ns3/csma-module.h>
 #include <ns3/internet-apps-module.h>
 #include "custom-controller.h"
-
+#include "applications/svelte-app-helper.h"
+#include "applications/svelte-client-app.h"
+#include "applications/svelte-server-app.h"
+#include "applications/voip-client.h"
+#include "applications/voip-server.h"
 using namespace ns3;
 using namespace std;
 int
@@ -68,6 +72,10 @@ main (int argc, char *argv[])
       LogComponentEnable ("OFSwitch13LearningController", LOG_LEVEL_ALL);
       LogComponentEnable ("OFSwitch13Helper", LOG_LEVEL_ALL);
       LogComponentEnable ("OFSwitch13InternalHelper", LOG_LEVEL_ALL);
+      LogComponentEnable ("SvelteClientApp", LOG_LEVEL_ALL);
+      LogComponentEnable ("SvelteServerApp", LOG_LEVEL_ALL);
+      LogComponentEnable ("VoipClient", LOG_LEVEL_ALL);
+      LogComponentEnable ("VoipServer", LOG_LEVEL_ALL);
     }
 
   // Enable checksum computations (required by OFSwitch13 module)
@@ -164,8 +172,17 @@ main (int argc, char *argv[])
 
   Ipv4InterfaceContainer clientIpIfaces = ipv4helpr.Assign (clientDevices);
   Ipv4InterfaceContainer serverIpIfaces = ipv4helpr.Assign (serverDevices);
+  uint16_t port = 10000;
 
+  SvelteAppHelper voipHelper(VoipClient::GetTypeId(),VoipServer::GetTypeId());
+
+  Ptr<SvelteClientApp> app = voipHelper.Install(clientNodes.Get(0), serverNodes.Get(0),
+    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port);
+  app->SetStartTime(Seconds(1));
+  Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,app);
+/*
   ApplicationContainer pingApps;
+
   for (int i = 0; i < numHosts; i++)
     {
       // Configure ping application between hosts
@@ -174,7 +191,7 @@ main (int argc, char *argv[])
       pingApps.Add (pingHelper.Install (clientNodes.Get (i)));
     }
   pingApps.Start (Seconds (1));
-
+*/
 
   // Enable datapath stats and pcap traces at hosts, switch(es), and controller(s)
   if (trace)
@@ -193,6 +210,7 @@ main (int argc, char *argv[])
 
   ArpCache::PopulateArpCaches ();
   // Run the simulation
+
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
   Simulator::Destroy ();
