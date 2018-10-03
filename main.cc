@@ -37,13 +37,20 @@ host 1 para host 0: switches 3,4,1
 #include <ns3/csma-module.h>
 #include <ns3/internet-apps-module.h>
 #include "custom-controller.h"
+#include "applications/auto-pilot-server.h"
+#include "applications/auto-pilot-client.h"
+#include "applications/buffered-video-server.h"
+#include "applications/buffered-video-client.h"
+#include "applications/http-server.h"
+#include "applications/http-client.h"
+#include "applications/live-video-server.h"
+#include "applications/live-video-client.h"
 #include "applications/svelte-app-helper.h"
 #include "applications/svelte-client-app.h"
 #include "applications/svelte-server-app.h"
 #include "applications/voip-client.h"
 #include "applications/voip-server.h"
-#include "applications/http-server.h"
-#include "applications/http-client.h"
+
 using namespace ns3;
 using namespace std;
 int
@@ -176,24 +183,41 @@ main (int argc, char *argv[])
   Ipv4InterfaceContainer serverIpIfaces = ipv4helpr.Assign (serverDevices);
   uint16_t port = 10000;
 
-  SvelteAppHelper voipHelper(VoipClient::GetTypeId(),VoipServer::GetTypeId());
+  SvelteAppHelper autoPilotHelper(AutoPilotClient::GetTypeId(),AutoPilotServer::GetTypeId());
+  SvelteAppHelper bufferedVideoHelper(BufferedVideoClient::GetTypeId(),BufferedVideoServer::GetTypeId());
   SvelteAppHelper httpHelper(HttpClient::GetTypeId(),HttpServer::GetTypeId());
+  SvelteAppHelper liveVideoHelper(LiveVideoClient::GetTypeId(),LiveVideoServer::GetTypeId());
+  SvelteAppHelper voipHelper(VoipClient::GetTypeId(),VoipServer::GetTypeId());
 
-  Ptr<SvelteClientApp> app = voipHelper.Install(clientNodes.Get(0), serverNodes.Get(0),
-    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port++);
+  for (uint32_t i = 0; i < clientDevices.GetN(); i++)
+  {
+      //autoPilot
+      Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+      appAutoPilot->SetStartTime(Seconds(1));
+      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appAutoPilot);
+      //bufferedVideo
+      Ptr<SvelteClientApp> appBufferedVideo = bufferedVideoHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+      appBufferedVideo->SetStartTime(Seconds(1));
+      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appBufferedVideo);
+      //http
+      Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+      appHttp->SetStartTime(Seconds(1));
+      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appHttp);
+      //liveVideo
+      Ptr<SvelteClientApp> appLiveVideo = liveVideoHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+      appLiveVideo->SetStartTime(Seconds(1));
+      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appLiveVideo);
+      //voip
+      Ptr<SvelteClientApp> appVoip = voipHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+      appVoip->SetStartTime(Seconds(1));
+      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appVoip);
 
-  app->SetStartTime(Seconds(1));
-  Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,app);
-
-
-  
-
-  Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNodes.Get(0), serverNodes.Get(0),
-    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port++);
-
-
-  appHttp->SetStartTime(Seconds(1));
-  Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appHttp);
+}
 /*
   ApplicationContainer pingApps;
 
