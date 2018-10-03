@@ -42,6 +42,8 @@ host 1 para host 0: switches 3,4,1
 #include "applications/svelte-server-app.h"
 #include "applications/voip-client.h"
 #include "applications/voip-server.h"
+#include "applications/http-server.h"
+#include "applications/http-client.h"
 using namespace ns3;
 using namespace std;
 int
@@ -175,11 +177,23 @@ main (int argc, char *argv[])
   uint16_t port = 10000;
 
   SvelteAppHelper voipHelper(VoipClient::GetTypeId(),VoipServer::GetTypeId());
+  SvelteAppHelper httpHelper(HttpClient::GetTypeId(),HttpServer::GetTypeId());
 
   Ptr<SvelteClientApp> app = voipHelper.Install(clientNodes.Get(0), serverNodes.Get(0),
-    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port);
+    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port++);
+
   app->SetStartTime(Seconds(1));
   Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,app);
+
+
+  
+
+  Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNodes.Get(0), serverNodes.Get(0),
+    clientIpIfaces.GetAddress(0), serverIpIfaces.GetAddress(0), port++);
+
+
+  appHttp->SetStartTime(Seconds(1));
+  Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appHttp);
 /*
   ApplicationContainer pingApps;
 
