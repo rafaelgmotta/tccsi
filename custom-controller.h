@@ -23,6 +23,7 @@
 #include <ns3/internet-module.h>
 #include <ns3/core-module.h>
 #include <ns3/network-module.h>
+#include <ns3/lte-module.h>
 
 namespace ns3 {
 
@@ -36,6 +37,39 @@ public:
   void NotifySwSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t ulPort, uint32_t dlPort);
   void NotifyUlSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t hwPort, uint32_t swPort, uint32_t clPort);
   void NotifyDlSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t hwPort, uint32_t swPort, uint32_t svPort);
+/**
+   * Request a new dedicated EPS bearer. This is used to check for necessary
+   * resources in the network (mainly available data rate for GBR bearers).
+   * When returning false, it aborts the bearer creation process.
+   * \internal Current implementation assumes that each application traffic
+   *           flow is associated with a unique bearer/tunnel. Because of that,
+   *           we can use only the teid for the tunnel to prepare and install
+   *           route. If we would like to aggregate traffic from several
+   *           applications into same bearer we will need to revise this.
+   * \param teid The teid for this bearer, if already defined.
+   * \param imsi uint64_t IMSI UE identifier.
+   * \param bearer EpsBearer bearer QoS characteristics of the bearer.
+   * \returns True if succeeded (the bearer creation process will proceed),
+   *          false otherwise (the bearer creation process will abort).
+   */
+  virtual bool DedicatedBearerRequest (EpsBearer bearer, uint64_t imsi,
+                                       uint32_t teid);
+
+  /**
+   * Release a dedicated EPS bearer.
+   * \internal Current implementation assumes that each application traffic
+   *           flow is associated with a unique bearer/tunnel. Because of that,
+   *           we can use only the teid for the tunnel to prepare and install
+   *           route. If we would like to aggregate traffic from several
+   *           applications into same bearer we will need to revise this.
+   * \param teid The teid for this bearer, if already defined.
+   * \param imsi uint64_t IMSI UE identifier.
+   * \param bearer EpsBearer bearer QoS characteristics of the bearer.
+   * \return True if succeeded, false otherwise.
+   */
+  virtual bool DedicatedBearerRelease (EpsBearer bearer, uint64_t imsi,
+                                       uint32_t teid);
+
 protected:
   virtual void DoDispose ();
   virtual void NotifyConstructionCompleted (void);

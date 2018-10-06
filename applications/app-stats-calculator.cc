@@ -264,7 +264,7 @@ std::ostream & operator << (std::ostream &os, const AppStatsCalculator &stats)
      << " " << setw (7) << stats.GetRxPackets ()
      << " " << setw (7) << stats.GetLossRatio () * 100
      << " " << setw (8) << stats.GetRxBytes ()
-     << " " << setw (9) << stats.GetRxThroughput ().GetBitRate ()/1000;
+     << " " << setw (9) << (double)(stats.GetRxThroughput ().GetBitRate ())/1000;
   return os;
 }
 

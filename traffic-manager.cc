@@ -19,9 +19,8 @@
  */
 
 #include "traffic-manager.h"
-#include "slice-controller.h"
-#include "../applications/svelte-client-app.h"
-#include "../metadata/ue-info.h"
+#include "custom-controller.h"
+#include "applications/svelte-client-app.h"
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
@@ -102,7 +101,7 @@ TrafficManager::AddSvelteClientApp (Ptr<SvelteClientApp> app)
   NS_LOG_INFO ("First start attempt for app " << app->GetAppName () <<
                " will occur at " << firstTry.GetSeconds () << "s.");
 }
-
+/*
 void
 TrafficManager::SessionCreatedCallback (
   uint64_t imsi, BearerContextList_t bearerList)
@@ -139,7 +138,7 @@ TrafficManager::SessionCreatedCallback (
       NS_LOG_INFO ("App " << app->GetNameTeid ());
     }
 }
-
+*/
 void
 TrafficManager::SetImsi (uint64_t value)
 {
@@ -221,7 +220,7 @@ TrafficManager::NotifyAppStop (Ptr<SvelteClientApp> app)
     {
       // Schedule the resource release procedure for +1 second.
       Simulator::Schedule (
-        Seconds (1), &SliceController::DedicatedBearerRelease,
+        Seconds (1), &CustomController::DedicatedBearerRelease,
         m_ctrlApp, app->GetEpsBearer (), m_imsi, appTeid);
     }
 
@@ -309,6 +308,11 @@ TrafficManager::GetNextAppStartTry (Ptr<SvelteClientApp> app) const
   auto it = m_timeByApp.find (app);
   NS_ASSERT_MSG (it != m_timeByApp.end (), "Can't find app " << app);
   return it->second;
+}
+
+void TrafficManager::SetController (Ptr<CustomController> ptr)
+{
+  m_ctrlApp = ptr;
 }
 
 } // namespace ns3

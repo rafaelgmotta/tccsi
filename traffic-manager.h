@@ -25,11 +25,10 @@
 #include <ns3/lte-module.h>
 #include <ns3/network-module.h>
 #include <ns3/internet-module.h>
-#include "../svelte-common.h"
 
 namespace ns3 {
 
-class SliceController;
+class CustomController;
 class SvelteClientApp;
 
 /**
@@ -62,13 +61,14 @@ public:
    * \param imsi The IMSI UE identifier.
    * \param bearerList The list of context bearers created.
    */
-  void SessionCreatedCallback (uint64_t imsi, BearerContextList_t bearerList);
+  //void SessionCreatedCallback (uint64_t imsi, BearerContextList_t bearerList);
 
   /**
    * Set the IMSI attribute.
    * \param value The ISMI value.
    */
   void SetImsi (uint64_t value);
+  void SetController (Ptr<CustomController> ptr);
 
 protected:
   /** Destructor implementation. */
@@ -116,7 +116,7 @@ private:
   bool                      m_restartApps;      //!< Continuously restart apps.
   Time                      m_startAppsAfter;   //!< Time before starting apps.
   Time                      m_stopRestartAppsAt; //!< Stop restart apps time.
-  Ptr<SliceController>      m_ctrlApp;          //!< OpenFlow slice controller.
+  Ptr<CustomController>     m_ctrlApp;          //!< OpenFlow slice controller.
   uint64_t                  m_imsi;             //!< UE IMSI identifier.
   uint32_t                  m_defaultTeid;      //!< Default UE tunnel TEID.
 

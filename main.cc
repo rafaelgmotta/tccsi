@@ -37,6 +37,7 @@ host 1 para host 0: switches 3,4,1
 #include <ns3/csma-module.h>
 #include <ns3/internet-apps-module.h>
 #include "custom-controller.h"
+#include "traffic-manager.h"
 #include "applications/auto-pilot-server.h"
 #include "applications/auto-pilot-client.h"
 #include "applications/buffered-video-server.h"
@@ -50,16 +51,17 @@ host 1 para host 0: switches 3,4,1
 #include "applications/svelte-server-app.h"
 #include "applications/voip-client.h"
 #include "applications/voip-server.h"
+#include "traffic-stats-calculator.h"
 
 using namespace ns3;
 using namespace std;
 int
 main (int argc, char *argv[])
 {
-  uint16_t simTime = 10;
+  uint16_t simTime = 500;
   uint16_t numHosts = 4;
   bool verbose = false;
-  bool trace = true;
+  bool trace = false;
 
   // Configure command line parameters
   CommandLine cmd;
@@ -85,8 +87,9 @@ main (int argc, char *argv[])
       LogComponentEnable ("SvelteServerApp", LOG_LEVEL_ALL);
       LogComponentEnable ("VoipClient", LOG_LEVEL_ALL);
       LogComponentEnable ("VoipServer", LOG_LEVEL_ALL);
-    }
 
+    }
+    LogComponentEnable ("TrafficManager", LOG_LEVEL_ALL);
   // Enable checksum computations (required by OFSwitch13 module)
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
 
@@ -189,35 +192,57 @@ main (int argc, char *argv[])
   SvelteAppHelper liveVideoHelper(LiveVideoClient::GetTypeId(),LiveVideoServer::GetTypeId());
   SvelteAppHelper voipHelper(VoipClient::GetTypeId(),VoipServer::GetTypeId());
 
+  ObjectFactory managerFactory;
+  managerFactory.SetTypeId(TrafficManager::GetTypeId());
+
   for (uint32_t i = 0; i < clientDevices.GetN(); i++)
   {
+      Ptr<Node> clientNode = clientNodes.Get(i);
+      Ptr<TrafficManager> manager = managerFactory.Create<TrafficManager>();
+      uint64_t imsi = i<<4;
+      manager->SetImsi(imsi);
+      manager->SetController(controllerApp);
+      clientNode->AggregateObject(manager);
+
       //autoPilot
-      Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+      Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install(clientNode, serverNodes.Get(i),
         clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appAutoPilot->SetStartTime(Seconds(1));
-      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appAutoPilot);
+      appAutoPilot->SetEpsBearer(EpsBearer(EpsBearer::GBR_GAMING,GbrQosInformation()));
+      appAutoPilot->SetTeid(imsi+1);
+      manager->AddSvelteClientApp(appAutoPilot);
+
       //bufferedVideo
-      Ptr<SvelteClientApp> appBufferedVideo = bufferedVideoHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+      Ptr<SvelteClientApp> appBufferedVideo = bufferedVideoHelper.Install(clientNode, serverNodes.Get(i),
         clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appBufferedVideo->SetStartTime(Seconds(1));
-      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appBufferedVideo);
+      appBufferedVideo->SetEpsBearer(EpsBearer(EpsBearer::NGBR_VIDEO_TCP_OPERATOR,GbrQosInformation()));
+      appBufferedVideo->SetTeid(imsi+2);
+      manager->AddSvelteClientApp(appBufferedVideo);
+      
       //http
-      Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+      Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNode, serverNodes.Get(i),
         clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appHttp->SetStartTime(Seconds(1));
-      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appHttp);
-      //liveVideo
-      Ptr<SvelteClientApp> appLiveVideo = liveVideoHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+      appHttp->SetEpsBearer(EpsBearer(EpsBearer::NGBR_VIDEO_TCP_PREMIUM,GbrQosInformation()));
+      appHttp->SetTeid(imsi+3);
+      manager->AddSvelteClientApp(appHttp);
+      
+      //liveVideo //FIXME TraceFilename
+      Ptr<SvelteClientApp> appLiveVideo = liveVideoHelper.Install(clientNode, serverNodes.Get(i),
         clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appLiveVideo->SetStartTime(Seconds(1));
-      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appLiveVideo);
+      appLiveVideo->SetEpsBearer(EpsBearer(EpsBearer::GBR_NON_CONV_VIDEO,GbrQosInformation()));
+      appLiveVideo->SetTeid(imsi+4);
+      manager->AddSvelteClientApp(appLiveVideo);
+      
       //voip
-      Ptr<SvelteClientApp> appVoip = voipHelper.Install(clientNodes.Get(i), serverNodes.Get(i),
+      Ptr<SvelteClientApp> appVoip = voipHelper.Install(clientNode, serverNodes.Get(i),
         clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appVoip->SetStartTime(Seconds(1));
-      Simulator::Schedule(Seconds(2), &SvelteClientApp::Start,appVoip);
+      appVoip->SetEpsBearer(EpsBearer(EpsBearer::GBR_CONV_VOICE,GbrQosInformation()));
+      appVoip->SetTeid(imsi+5);
+      manager->AddSvelteClientApp(appVoip);
 
 }
+
+Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
+
 /*
   ApplicationContainer pingApps;
 
@@ -232,19 +257,21 @@ main (int argc, char *argv[])
 */
 
   // Enable datapath stats and pcap traces at hosts, switch(es), and controller(s)
+  of13Helper->EnableDatapathStats ("switch-stats");
   if (trace)
     {
       of13Helper->EnableOpenFlowPcap ("openflow");
-      of13Helper->EnableDatapathStats ("switch-stats");
+      
       csmaHelper.EnablePcap ("clients", clientDevices);
       csmaHelper.EnablePcap ("servers", serverDevices);
       csmaHelper.EnablePcap ("switchUl", NodeContainer (switchNodeUl));
       csmaHelper.EnablePcap ("switchDl", NodeContainer (switchNodeDl));
       csmaHelper.EnablePcap ("switchHw", NodeContainer (switchNodeHw));
       csmaHelper.EnablePcap ("switchSw", NodeContainer (switchNodeSw));
+      ofs::EnableLibraryLog (true,"log");
 
     }
-  ofs::EnableLibraryLog (true,"log");
+  
 
   ArpCache::PopulateArpCaches ();
   // Run the simulation
