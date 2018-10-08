@@ -218,18 +218,18 @@ void CustomController::NotifyDlSwitch (Ptr<OFSwitch13Device> switchDevice, uint3
  bool CustomController::DedicatedBearerRequest (EpsBearer bearer, uint64_t imsi,
                                        uint32_t teid)
  {
-return false;
+  return false;
  }
 
  bool CustomController::DedicatedBearerRelease (EpsBearer bearer, uint64_t imsi,
                                        uint32_t teid)
  {
-return true;
+  return true;
  }
 
 uint64_t CustomController::GetSwitchId(uint32_t teid)
 {
-
+  return 0;
 }
 
 }//namespace ns3

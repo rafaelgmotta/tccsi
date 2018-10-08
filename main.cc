@@ -117,11 +117,11 @@ main (int argc, char *argv[])
   Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0);
   Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0);
   
-  of13Helper->SetDeviceAttribute("PipelineCapacity",StringValue("1Gbps"));
+  of13Helper->SetDeviceAttribute("ProcessingCapacity",StringValue("1Gbps"));
   of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(128));
   Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0);
   
-  of13Helper->SetDeviceAttribute("PipelineCapacity",StringValue("10Mbps"));
+  of13Helper->SetDeviceAttribute("ProcessingCapacity",StringValue("10Mbps"));
   of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(10000));
   Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0);
 

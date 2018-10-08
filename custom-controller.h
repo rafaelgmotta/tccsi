@@ -37,6 +37,7 @@ public:
   void NotifySwSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t ulPort, uint32_t dlPort);
   void NotifyUlSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t hwPort, uint32_t swPort, uint32_t clPort);
   void NotifyDlSwitch (Ptr<OFSwitch13Device> switchDevice, uint32_t hwPort, uint32_t swPort, uint32_t svPort);
+  uint64_t GetSwitchId(uint32_t teid);
 /**
    * Request a new dedicated EPS bearer. This is used to check for necessary
    * resources in the network (mainly available data rate for GBR bearers).
