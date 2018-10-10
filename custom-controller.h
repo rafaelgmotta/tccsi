@@ -24,6 +24,7 @@
 #include <ns3/core-module.h>
 #include <ns3/network-module.h>
 #include <ns3/lte-module.h>
+#include "applications/svelte-client-app.h"
 
 namespace ns3 {
 
@@ -53,8 +54,7 @@ public:
    * \returns True if succeeded (the bearer creation process will proceed),
    *          false otherwise (the bearer creation process will abort).
    */
-  virtual bool DedicatedBearerRequest (EpsBearer bearer, uint64_t imsi,
-                                       uint32_t teid);
+  virtual bool DedicatedBearerRequest (Ptr<SvelteClientApp> app, uint64_t imsi);
 
   /**
    * Release a dedicated EPS bearer.
@@ -68,8 +68,7 @@ public:
    * \param bearer EpsBearer bearer QoS characteristics of the bearer.
    * \return True if succeeded, false otherwise.
    */
-  virtual bool DedicatedBearerRelease (EpsBearer bearer, uint64_t imsi,
-                                       uint32_t teid);
+  virtual bool DedicatedBearerRelease (Ptr<SvelteClientApp> app, uint64_t imsi);
 
 protected:
   virtual void DoDispose ();

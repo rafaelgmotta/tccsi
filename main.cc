@@ -21,12 +21,12 @@
 /*
 *
 *
-*                  link1+------------------+     link4    +------------------+     link3    +------------------+ link2
-*            Host 0 === | OpenFlow switch esquerda1 |  ==========  | OpenFlow switch3 |  ==========  | OpenFlow switch direita2 |  === Host 1
-*                       +------------------+              +------------------+              +------------------+
-*                       port 1:host          \                                          /  port 1: host
-*                       port 2:switch 2       \  link5   +------------------+   link6  /   port 2: switch 2
-*                       port 3:switch 4         =======  | OpenFlow switch4 |  =======     port 3: switch 4
+*         link1+------------------+     link4    +------------------+     link3    +------------------+ link2
+*   Host 0 === | OpenFlow switch esquerda1 |  ==========  | OpenFlow switch3 |  ==========  | OpenFlow switch direita2 |  === Host 1
+*              +------------------+              +------------------+              +------------------+
+*              port 1:host          \                                          /  port 1: host
+*              port 2:switch 2       \  link5   +------------------+   link6  /   port 2: switch 2
+*              port 3:switch 4         =======  | OpenFlow switch4 |  =======     port 3: switch 4
 *                                                        +------------------+
 
 host 0 para host 1: switches 1,2,3
@@ -58,7 +58,7 @@ using namespace std;
 int
 main (int argc, char *argv[])
 {
-  uint16_t simTime = 500;
+  uint16_t simTime = 100;
   uint16_t numHosts = 4;
   bool verbose = false;
   bool trace = false;
@@ -113,17 +113,23 @@ main (int argc, char *argv[])
   Ptr<Node> switchNodeDl = CreateObject<Node> ();
   Ptr<Node> switchNodeHw = CreateObject<Node> ();
   Ptr<Node> switchNodeSw = CreateObject<Node> ();
+  Names::Add("ul",switchNodeUl);
+  Names::Add("dl",switchNodeDl);
+  Names::Add("hw",switchNodeHw);
+  Names::Add("sw",switchNodeSw);
 
-  Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0);
-  Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0);
+  Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0); //1
+  Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0); //2
   
   of13Helper->SetDeviceAttribute("ProcessingCapacity",StringValue("1Gbps"));
   of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(128));
-  Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0);
+
+  Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0); //3
   
   of13Helper->SetDeviceAttribute("ProcessingCapacity",StringValue("10Mbps"));
   of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(10000));
-  Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0);
+  of13Helper->SetDeviceAttribute("TcamDelay",TimeValue(MicroSeconds(100)));
+  Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0); //4
 
   NetDeviceContainer hw2ulLink = csmaHelper.Install (NodeContainer (switchNodeHw, switchNodeUl));
   uint32_t hw2ulPort = switchDeviceHw->AddSwitchPort (hw2ulLink.Get (0))->GetPortNo ();
@@ -180,11 +186,11 @@ main (int argc, char *argv[])
 
   // Set IPv4 host addresses
   Ipv4AddressHelper ipv4helpr;
-  ipv4helpr.SetBase ("10.1.0.0", "255.255.0.0");
-
+  ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0", "0.1.0.0");
   Ipv4InterfaceContainer clientIpIfaces = ipv4helpr.Assign (clientDevices);
+
+  ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0","0.2.0.0");
   Ipv4InterfaceContainer serverIpIfaces = ipv4helpr.Assign (serverDevices);
-  uint16_t port = 10000;
 
   SvelteAppHelper autoPilotHelper(AutoPilotClient::GetTypeId(),AutoPilotServer::GetTypeId());
   SvelteAppHelper bufferedVideoHelper(BufferedVideoClient::GetTypeId(),BufferedVideoServer::GetTypeId());
@@ -202,39 +208,39 @@ main (int argc, char *argv[])
       uint64_t imsi = i<<4;
       manager->SetImsi(imsi);
       manager->SetController(controllerApp);
-      clientNode->AggregateObject(manager);
-
-      //autoPilot
-      Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install(clientNode, serverNodes.Get(i),
-        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
-      appAutoPilot->SetEpsBearer(EpsBearer(EpsBearer::GBR_GAMING,GbrQosInformation()));
-      appAutoPilot->SetTeid(imsi+1);
-      manager->AddSvelteClientApp(appAutoPilot);
-
+      clientNode->AggregateObject(manager); 
+//tcp
       //bufferedVideo
       Ptr<SvelteClientApp> appBufferedVideo = bufferedVideoHelper.Install(clientNode, serverNodes.Get(i),
-        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), 10000+imsi+1);
       appBufferedVideo->SetEpsBearer(EpsBearer(EpsBearer::NGBR_VIDEO_TCP_OPERATOR,GbrQosInformation()));
-      appBufferedVideo->SetTeid(imsi+2);
+      appBufferedVideo->SetTeid(imsi+1);
       manager->AddSvelteClientApp(appBufferedVideo);
       
       //http
       Ptr<SvelteClientApp> appHttp = httpHelper.Install(clientNode, serverNodes.Get(i),
-        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), 10000+imsi+2);
       appHttp->SetEpsBearer(EpsBearer(EpsBearer::NGBR_VIDEO_TCP_PREMIUM,GbrQosInformation()));
-      appHttp->SetTeid(imsi+3);
+      appHttp->SetTeid(imsi+2);
       manager->AddSvelteClientApp(appHttp);
+//udp
+      //autoPilot
+      Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install(clientNode, serverNodes.Get(i),
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), 10000+imsi+3);
+      appAutoPilot->SetEpsBearer(EpsBearer(EpsBearer::GBR_GAMING,GbrQosInformation()));
+      appAutoPilot->SetTeid(imsi+3);
+      manager->AddSvelteClientApp(appAutoPilot);
       
       //liveVideo //FIXME TraceFilename
       Ptr<SvelteClientApp> appLiveVideo = liveVideoHelper.Install(clientNode, serverNodes.Get(i),
-        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), 10000+imsi+4);
       appLiveVideo->SetEpsBearer(EpsBearer(EpsBearer::GBR_NON_CONV_VIDEO,GbrQosInformation()));
       appLiveVideo->SetTeid(imsi+4);
       manager->AddSvelteClientApp(appLiveVideo);
       
       //voip
       Ptr<SvelteClientApp> appVoip = voipHelper.Install(clientNode, serverNodes.Get(i),
-        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), port++);
+        clientIpIfaces.GetAddress(i), serverIpIfaces.GetAddress(i), 10000+imsi+5);
       appVoip->SetEpsBearer(EpsBearer(EpsBearer::GBR_CONV_VOICE,GbrQosInformation()));
       appVoip->SetTeid(imsi+5);
       manager->AddSvelteClientApp(appVoip);

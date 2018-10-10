@@ -191,8 +191,7 @@ TrafficManager::AppStartTry (Ptr<SvelteClientApp> app)
   if (app->GetTeid () != m_defaultTeid)
     {
       // No resource request for traffic over default bearer.
-      authorized = m_ctrlApp->DedicatedBearerRequest (
-          app->GetEpsBearer (), m_imsi, app->GetTeid ());
+      authorized = m_ctrlApp->DedicatedBearerRequest (app, m_imsi);
     }
 
   // No retries are performed for a non-authorized traffic.
@@ -221,7 +220,7 @@ TrafficManager::NotifyAppStop (Ptr<SvelteClientApp> app)
       // Schedule the resource release procedure for +1 second.
       Simulator::Schedule (
         Seconds (1), &CustomController::DedicatedBearerRelease,
-        m_ctrlApp, app->GetEpsBearer (), m_imsi, appTeid);
+        m_ctrlApp, app, m_imsi);
     }
 
   // Schedule the next start attempt for this application,
