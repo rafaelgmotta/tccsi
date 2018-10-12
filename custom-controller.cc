@@ -21,7 +21,7 @@
 #include "custom-controller.h"
 #include <iomanip>
 #include <iostream>
-
+#define COOKIE_STRICT_MASK_STR  "0xFFFFFFFFFFFFFFFF"
 using namespace std;
 namespace ns3 {
 NS_LOG_COMPONENT_DEFINE ("CustomController");
@@ -54,36 +54,20 @@ CustomController::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::CustomController")
     .SetParent<OFSwitch13Controller> ()
     .AddConstructor<CustomController> ()
-    // .AddAttribute ("EnableMeter",
-    //                "Enable per-flow mettering.",
-    //                BooleanValue (false),
-    //                MakeBooleanAccessor (&CustomController::m_meterEnable),
-    //                MakeBooleanChecker ())
-    // .AddAttribute ("MeterRate",
-    //                "Per-flow meter rate.",
-    //                DataRateValue (DataRate ("256Kbps")),
-    //                MakeDataRateAccessor (&CustomController::m_meterRate),
-    //                MakeDataRateChecker ())
-    // .AddAttribute ("LinkAggregation",
-    //                "Enable link aggregation.",
-    //                BooleanValue (true),
-    //                MakeBooleanAccessor (&CustomController::m_linkAggregation),
-    //                MakeBooleanChecker ())
-    // .AddAttribute ("ServerIpAddr",
-    //                "Server IPv4 address.",
-    //                AddressValue (Address (Ipv4Address ("10.1.1.1"))),
-    //                MakeAddressAccessor (&CustomController::m_serverIpAddress),
-    //                MakeAddressChecker ())
-    // .AddAttribute ("ServerTcpPort",
-    //                "Server TCP port.",
-    //                UintegerValue (9),
-    //                MakeUintegerAccessor (&CustomController::m_serverTcpPort),
-    //                MakeUintegerChecker<uint64_t> ())
-    // .AddAttribute ("ServerMacAddr",
-    //                "Server MAC address.",
-    //                AddressValue (Address (Mac48Address ("00:00:00:00:00:01"))),
-    //                MakeAddressAccessor (&CustomController::m_serverMacAddress),
-    //                MakeAddressChecker ())
+    .AddAttribute ("BlockThs",
+                   "Switch overloaded block threshold.",
+                   DoubleValue (0.9),
+                   MakeDoubleAccessor (&CustomController::m_blockThs),
+                   MakeDoubleChecker<double> (0.8, 1.0))
+    .AddAttribute ("BlockPolicy",
+                   "Switch overloaded block policy.",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&CustomController::m_blockPol),
+                   MakeBooleanChecker ())
+    .AddTraceSource ("BearerRequest", "The bearer request trace source.",
+                     MakeTraceSourceAccessor (
+                       &CustomController::m_bearerRequestTrace),
+                     "ns3::CustomController::RequestTracedCallback")
   ;
   return tid;
 }
@@ -223,18 +207,28 @@ bool CustomController::DedicatedBearerRequest  (Ptr<SvelteClientApp> app, uint64
   Ptr<Node> node = app->GetNode();
   Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress(1,0).GetLocal();
-  cout << ipv4addr << endl;
+  
+
   uint32_t bit = ipv4addr.Get()&1;
-  cout << bit << endl;
+  
   Ptr<OFSwitch13Device> switchDevice;
 
   uint16_t port = app->GetTeid()+10000;
+  
   bool tcp = (app->GetTeid() & 0xF) <= 2;
 
-  if(bit)
+  if(!bit)
     switchDevice = switchDeviceHw;
   else
     switchDevice = switchDeviceSw;
+
+  //consultar switch e verificar disponibilidade de processamento e espaco
+  //switchDevice->GetFlowTableUsage (tableId);
+  //acima do espaco: m_bearerRequestTrace(teid, false);
+                    //return false;
+  //acima do processamento: verifica policy
+
+  //
 
 uint32_t teid = app->GetTeid ();
   char teidStr[11];
@@ -255,19 +249,41 @@ uint32_t teid = app->GetTeid ();
     cmdDl << ",ip_proto=17,udp_src=" << port;
   }
 
-  cmdUl << " apply:group=1";
-  cmdDl << " apply:group=2";
-
+  cmdUl << " write:group=1";
+  cmdDl << " write:group=2";
 
   DpctlExecute (switchDevice->GetDatapathId (),cmdUl.str ());
   DpctlExecute (switchDevice->GetDatapathId (),cmdDl.str ());
 
-
+  m_bearerRequestTrace(teid, true);
   return true;
 }
 
 bool CustomController::DedicatedBearerRelease (Ptr<SvelteClientApp> app, uint64_t imsi)
 {
+  uint32_t teid = app->GetTeid ();
+  char teidStr[11];
+  sprintf(teidStr,"0x%08x",teid);
+
+  Ptr<Node> node = app->GetNode();
+  Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+  Ipv4Address ipv4addr = ipv4->GetAddress(1,0).GetLocal();
+  
+  uint32_t bit = ipv4addr.Get()&1;
+
+  Ptr<OFSwitch13Device> switchDevice;
+
+  if(!bit)
+    switchDevice = switchDeviceHw;
+  else
+    switchDevice = switchDeviceSw;
+
+  std::ostringstream cmd;
+  cmd << "flow-mod cmd=del"
+      << ",cookie="       << teidStr
+      << ",cookie_mask="  << COOKIE_STRICT_MASK_STR;
+  DpctlExecute (switchDevice->GetDatapathId (), cmd.str ());
+
   return true;
 }
 

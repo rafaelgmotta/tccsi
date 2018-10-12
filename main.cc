@@ -55,6 +55,27 @@ host 1 para host 0: switches 3,4,1
 
 using namespace ns3;
 using namespace std;
+
+void RequestCounter(uint32_t teid, bool accepted)
+{
+  //contar quantos aceitos e quantos bloqueados e imprimir no fim da simulacao
+  if(accepted)
+    cout << "Aceito, teid: " <<teid<<endl;
+  else
+    cout << "Bloqueado" <<endl;
+
+}
+void
+EnableProgress (uint32_t interval)
+{
+  if (interval)
+  {
+    int64_t now = Simulator::Now ().ToInteger (Time::S);
+    std::cout << "Current simulation time: +" << now << ".0s" << std::endl;
+    Simulator::Schedule (Seconds (interval), &EnableProgress, interval);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -87,14 +108,12 @@ main (int argc, char *argv[])
       LogComponentEnable ("SvelteServerApp", LOG_LEVEL_ALL);
       LogComponentEnable ("VoipClient", LOG_LEVEL_ALL);
       LogComponentEnable ("VoipServer", LOG_LEVEL_ALL);
+      LogComponentEnable ("TrafficManager", LOG_LEVEL_ALL);
 
     }
-    LogComponentEnable ("TrafficManager", LOG_LEVEL_ALL);
+    
   // Enable checksum computations (required by OFSwitch13 module)
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
-
-
-
 
   // Use the CsmaHelper to connect host nodes to the switch node
   CsmaHelper csmaHelper;
@@ -278,11 +297,15 @@ Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
 
     }
   
+  Config::ConnectWithoutContext (
+  "/NodeList/*/ApplicationList/*/$ns3::CustomController/BearerRequest",
+  MakeCallback (&RequestCounter));
 
   ArpCache::PopulateArpCaches ();
   // Run the simulation
-
+  EnableProgress(1);
   Simulator::Stop (Seconds (simTime));
+
   Simulator::Run ();
   Simulator::Destroy ();
 }

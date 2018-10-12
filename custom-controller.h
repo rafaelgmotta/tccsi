@@ -31,6 +31,7 @@ namespace ns3 {
 class CustomController : public OFSwitch13Controller
 {
 public:
+  typedef void (*RequestTracedCallback)(uint32_t teid, bool accepted);
   CustomController ();
   virtual ~CustomController ();
   static TypeId GetTypeId (void);
@@ -90,6 +91,9 @@ private:
   uint32_t dl2swPort;
   uint32_t ul2clPort;
   uint32_t dl2svPort;
+  double m_blockThs;
+  bool m_blockPol;
+  TracedCallback<uint32_t, bool> m_bearerRequestTrace;
 
 };
 
