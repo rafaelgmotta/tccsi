@@ -21,9 +21,9 @@
 /*
 *
 *
-*         link1+------------------+     link4    +------------------+     link3    +------------------+ link2
-*   Host 0 === | OpenFlow switch esquerda1 |  ==========  | OpenFlow switch3 |  ==========  | OpenFlow switch direita2 |  === Host 1
-*              +------------------+              +------------------+              +------------------+
+*         link1+------------------+       link4     +------------------+     link3    +------------------+ link2
+*   Host 0 === | OFswitch esquerda1 |  ==========  | OpenFlow switch3 |  ==========  | OpenFlow switch direita2 |  === Host 1
+*              +------------------+                 +------------------+              +------------------+
 *              port 1:host          \                                          /  port 1: host
 *              port 2:switch 2       \  link5   +------------------+   link6  /   port 2: switch 2
 *              port 3:switch 4         =======  | OpenFlow switch4 |  =======     port 3: switch 4
@@ -55,14 +55,19 @@ host 1 para host 0: switches 3,4,1
 
 using namespace ns3;
 using namespace std;
-
-void RequestCounter(uint32_t teid, bool accepted)
+uint16_t aceitos=0, bloqueados=0; 
+void 
+RequestCounter(uint32_t teid, bool accepted)
 {
   //contar quantos aceitos e quantos bloqueados e imprimir no fim da simulacao
-  if(accepted)
+  if(accepted){
     cout << "Aceito, teid: " <<teid<<endl;
-  else
+    aceitos++;
+  }
+  else{
     cout << "Bloqueado" <<endl;
+    bloqueados++;
+  }
 
 }
 void
@@ -79,6 +84,7 @@ EnableProgress (uint32_t interval)
 int
 main (int argc, char *argv[])
 {
+  
   uint16_t simTime = 100;
   uint16_t numHosts = 4;
   bool verbose = false;
@@ -141,7 +147,7 @@ main (int argc, char *argv[])
   Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0); //2
   
   of13Helper->SetDeviceAttribute("ProcessingCapacity",StringValue("1Gbps"));
-  of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(128));
+  of13Helper->SetDeviceAttribute("FlowTableSize",UintegerValue(512));
 
   Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0); //3
   
@@ -169,7 +175,7 @@ main (int argc, char *argv[])
   //Create two host nodes
   NodeContainer clientNodes;
   NodeContainer serverNodes;
-  clientNodes.Create (numHosts);//criar mais hosts e instalar apps pra gerar trafego
+  clientNodes.Create (numHosts);
   serverNodes.Create (numHosts);
 
   NetDeviceContainer clientDevices;
@@ -177,8 +183,9 @@ main (int argc, char *argv[])
 
   CsmaHelper csmaHelperClSv;
   csmaHelperClSv.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-  csmaHelperClSv.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (1)));
+  csmaHelperClSv.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (0)));
 
+ //
   NetDeviceContainer cl2ulLink = csmaHelperClSv.Install (NodeContainer (switchNodeUl,clientNodes));
   uint32_t ul2clPort = switchDeviceUl->AddSwitchPort (cl2ulLink.Get (0))->GetPortNo ();
 
@@ -206,9 +213,11 @@ main (int argc, char *argv[])
   // Set IPv4 host addresses
   Ipv4AddressHelper ipv4helpr;
   ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0", "0.1.0.0");
+  //ipv4helpr.SetBase ("10.1.0.0", "255.255.0.0");
   Ipv4InterfaceContainer clientIpIfaces = ipv4helpr.Assign (clientDevices);
-
-  ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0","0.2.0.0");
+  
+  //ipv4helpr.SetBase ("10.2.0.0", "255.255.0.0");
+  ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0","0.2.0.0");//"255.255.0.0"
   Ipv4InterfaceContainer serverIpIfaces = ipv4helpr.Assign (serverDevices);
 
   SvelteAppHelper autoPilotHelper(AutoPilotClient::GetTypeId(),AutoPilotServer::GetTypeId());
@@ -300,13 +309,16 @@ Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
   Config::ConnectWithoutContext (
   "/NodeList/*/ApplicationList/*/$ns3::CustomController/BearerRequest",
   MakeCallback (&RequestCounter));
-
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
   ArpCache::PopulateArpCaches ();
   // Run the simulation
   EnableProgress(1);
+
   Simulator::Stop (Seconds (simTime));
 
   Simulator::Run ();
   Simulator::Destroy ();
+  cout << "Aceitos: " << aceitos << endl;
+  cout << "Bloqueados: " << bloqueados << endl;
 }
 

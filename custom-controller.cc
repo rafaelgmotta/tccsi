@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author:  Luciano Chaves <luciano@lrc.ic.unicamp.br>
+            Rafael Motta <rafaelgmotta@gmail.com>
  */
 
 #include "custom-controller.h"
@@ -60,7 +61,7 @@ CustomController::GetTypeId (void)
                    MakeDoubleAccessor (&CustomController::m_blockThs),
                    MakeDoubleChecker<double> (0.8, 1.0))
     .AddAttribute ("BlockPolicy",
-                   "Switch overloaded block policy.",
+                   "Switch overloaded block policy. (true aceita, false bloqueia)",
                    BooleanValue (true),
                    MakeBooleanAccessor (&CustomController::m_blockPol),
                    MakeBooleanChecker ())
@@ -222,17 +223,34 @@ bool CustomController::DedicatedBearerRequest  (Ptr<SvelteClientApp> app, uint64
   else
     switchDevice = switchDeviceSw;
 
+  uint32_t teid = app->GetTeid ();
+  char teidStr[11];
+  sprintf(teidStr,"0x%08x",teid);
+
   //consultar switch e verificar disponibilidade de processamento e espaco
+
   //switchDevice->GetFlowTableUsage (tableId);
   //acima do espaco: m_bearerRequestTrace(teid, false);
                     //return false;
   //acima do processamento: verifica policy
 
-  //
 
-uint32_t teid = app->GetTeid ();
-  char teidStr[11];
-  sprintf(teidStr,"0x%08x",teid);
+  double usage = switchDevice->GetFlowTableUsage (0);
+
+  if(usage > usageLimit){
+    m_bearerRequestTrace(teid, false);
+    return false;
+  }
+
+  double processing = switchDevice->GetProcessingUsage();
+
+  if(processing > processingLimit){
+    m_bearerRequestTrace(teid, m_blockPol);
+    return m_blockPol;
+  }
+
+
+  //app tcps nao passam, verificar regras
 
   std::ostringstream cmdUl, cmdDl;
 
@@ -241,11 +259,11 @@ uint32_t teid = app->GetTeid ();
   cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << teidStr
         << " eth_type=0x800,ip_dst=" << ipv4addr;
   if (tcp){
-    cmdUl << ",ip_proto=6,tcp_src=" << port;
+    cmdUl << ",ip_proto=6,tcp_dst=" << port;
     cmdDl << ",ip_proto=6,tcp_src=" << port;
   }
   else{
-    cmdUl << ",ip_proto=17,udp_src=" << port;
+    cmdUl << ",ip_proto=17,udp_dst=" << port;
     cmdDl << ",ip_proto=17,udp_src=" << port;
   }
 

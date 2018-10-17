@@ -93,6 +93,8 @@ private:
   uint32_t dl2svPort;
   double m_blockThs;
   bool m_blockPol;
+  double usageLimit = 0.9;
+  double processingLimit = 0.9;
   TracedCallback<uint32_t, bool> m_bearerRequestTrace;
 
 };
