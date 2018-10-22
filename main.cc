@@ -172,6 +172,26 @@ main (int argc, char *argv[])
   uint32_t sw2dlPort = switchDeviceSw->AddSwitchPort (sw2dlLink.Get (0))->GetPortNo ();
   uint32_t dl2swPort = switchDeviceDl->AddSwitchPort (sw2dlLink.Get (1))->GetPortNo ();
 
+  Ptr<Node> routerDl = CreateObject<Node>();
+  Ptr<Node> routerUl = CreateObject<Node>();
+
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0))); //40KM Fiber cable
+
+  NetDeviceContainer router2dlLink = csmaHelper.Install (NodeContainer (routerDl, switchNodeDl));
+  uint32_t dl2routerPort = switchDeviceDl->AddSwitchPort (router2dlLink.Get (1))->GetPortNo ();
+
+  NetDeviceContainer router2ulLink = csmaHelper.Install (NodeContainer (routerUl, switchNodeUl));
+  uint32_t ul2routerPort = switchDeviceUl->AddSwitchPort (router2ulLink.Get (1))->GetPortNo ();
+
+
+  controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort); //Nao trocar ordem
+  controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
+  controllerApp->NotifyUlSwitch (switchDeviceUl, ul2hwPort, ul2swPort, ul2routerPort);
+  controllerApp->NotifyDlSwitch (switchDeviceDl, dl2hwPort, dl2swPort, dl2routerPort);
+
+  of13Helper->CreateOpenFlowChannels ();
+
   //Create two host nodes
   NodeContainer clientNodes;
   NodeContainer serverNodes;
@@ -180,35 +200,27 @@ main (int argc, char *argv[])
 
   NetDeviceContainer clientDevices;
   NetDeviceContainer serverDevices;
+  NetDeviceContainer clientRouterDevices;
+  NetDeviceContainer serverRouterDevices;
 
-  CsmaHelper csmaHelperClSv;
-  csmaHelperClSv.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-  csmaHelperClSv.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (0)));
-
- //
-  NetDeviceContainer cl2ulLink = csmaHelperClSv.Install (NodeContainer (switchNodeUl,clientNodes));
-  uint32_t ul2clPort = switchDeviceUl->AddSwitchPort (cl2ulLink.Get (0))->GetPortNo ();
-
-  NetDeviceContainer dl2svLink = csmaHelperClSv.Install (NodeContainer (switchNodeDl,serverNodes));
-  uint32_t dl2svPort = switchDeviceDl->AddSwitchPort (dl2svLink.Get (0))->GetPortNo ();
-
-  for (uint32_t i = 1; i < cl2ulLink.GetN (); i++)
+  for (uint32_t i = 0; i < numHosts; i++)
     {
-      clientDevices.Add (cl2ulLink.Get (i));
-      serverDevices.Add (dl2svLink.Get (i));
+      NetDeviceContainer clientTemp = csmaHelper.Install (NodeContainer (routerUl, clientNodes.Get (i)));
+      clientRouterDevices.Add(clientTemp.Get(0));
+      clientDevices.Add(clientTemp.Get(1));
+
+      NetDeviceContainer serverTemp = csmaHelper.Install (NodeContainer (routerDl, serverNodes.Get (i)));
+
+      serverRouterDevices.Add (serverTemp.Get(0));
+      serverDevices.Add (serverTemp.Get(1));
     }
-  controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort); //Nao trocar ordem
-  controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
-  controllerApp->NotifyUlSwitch (switchDeviceUl, ul2hwPort, ul2swPort, ul2clPort);
-  controllerApp->NotifyDlSwitch (switchDeviceDl, dl2hwPort, dl2swPort, dl2svPort);
-
-
-  of13Helper->CreateOpenFlowChannels ();
 
   // Install the TCP/IP stack into hosts nodes
   InternetStackHelper internet;
   internet.Install (clientNodes);
   internet.Install (serverNodes);
+  internet.Install (routerDl);
+  internet.Install (routerUl);
 
   // Set IPv4 host addresses
   Ipv4AddressHelper ipv4helpr;
