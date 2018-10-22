@@ -84,6 +84,8 @@ EnableProgress (uint32_t interval)
 int
 main (int argc, char *argv[])
 {
+
+  Config::SetDefault ("ns3::CsmaChannel::FullDuplex",BooleanValue(true));
   
   uint16_t simTime = 100;
   uint16_t numHosts = 4;
@@ -138,6 +140,8 @@ main (int argc, char *argv[])
   Ptr<Node> switchNodeDl = CreateObject<Node> ();
   Ptr<Node> switchNodeHw = CreateObject<Node> ();
   Ptr<Node> switchNodeSw = CreateObject<Node> ();
+
+
   Names::Add("ul",switchNodeUl);
   Names::Add("dl",switchNodeDl);
   Names::Add("hw",switchNodeHw);
@@ -174,16 +178,18 @@ main (int argc, char *argv[])
 
   Ptr<Node> routerDl = CreateObject<Node>();
   Ptr<Node> routerUl = CreateObject<Node>();
+  NetDeviceContainer routerDevices;
 
   csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
   csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0))); //40KM Fiber cable
 
   NetDeviceContainer router2dlLink = csmaHelper.Install (NodeContainer (routerDl, switchNodeDl));
   uint32_t dl2routerPort = switchDeviceDl->AddSwitchPort (router2dlLink.Get (1))->GetPortNo ();
+  routerDevices.Add(router2dlLink.Get (0));
 
   NetDeviceContainer router2ulLink = csmaHelper.Install (NodeContainer (routerUl, switchNodeUl));
   uint32_t ul2routerPort = switchDeviceUl->AddSwitchPort (router2ulLink.Get (1))->GetPortNo ();
-
+  routerDevices.Add(router2ulLink.Get (0));
 
   controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort); //Nao trocar ordem
   controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
