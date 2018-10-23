@@ -148,22 +148,79 @@ main (int argc, char *argv[])
   EnableVerbose (verbose);
   EnableOfsLogs (ofsLog);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // Create the simulation scenario.
   NS_LOG_INFO ("Creating simulation scenario...");
+
+  // Configure the CsmaHelper to connect OpenFlow switches (40KM Fiber cable)
+  CsmaHelper csmaHelper;
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (200)));
+
+  // Create the OpenFlow helper.
+  Ptr<OFSwitch13InternalHelper> of13Helper =
+    CreateObjectWithAttributes<OFSwitch13InternalHelper> (
+      "ChannelType", EnumValue (OFSwitch13Helper::DEDICATEDP2P));
+
+  // Create the OpenFlow controller.
+  Ptr<Node> controllerNode = CreateObject<Node> ();
+  Names::Add ("ct", controllerNode);
+  Ptr<CustomController> controllerApp = CreateObject<CustomController> ();
+  of13Helper->InstallController (controllerNode, controllerApp);
+
+  // Create and name the switch nodes.
+  NodeContainer switchNodes;
+  switchNodes.Create (4);
+  Ptr<Node> switchNodeUl = switchNodes.Get (0);
+  Ptr<Node> switchNodeDl = switchNodes.Get (1);
+  Ptr<Node> switchNodeHw = switchNodes.Get (2);
+  Ptr<Node> switchNodeSw = switchNodes.Get (3);
+  Names::Add ("ul", switchNodeUl);
+  Names::Add ("dl", switchNodeDl);
+  Names::Add ("hw", switchNodeHw);
+  Names::Add ("sw", switchNodeSw);
+
+  // Configure switch nodes UL and DL as standard OpenFlow switches.
+  of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (3));
+  Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0);
+  Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0);
+
+  // Configure switch node HW as a hardware-based OpenFlow switch.
+  of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("1Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (512));
+  Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0);
+
+  // Configure switch node SW as a software-based OpenFlow switch.
+  of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("10Mbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (10000));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (100)));
+  Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0);
+
+  // Connecting switches.
+  NetDeviceContainer hw2ulLink = csmaHelper.Install (switchNodeHw, switchNodeUl);
+  uint32_t hw2ulPort = switchDeviceHw->AddSwitchPort (hw2ulLink.Get (0))->GetPortNo ();
+  uint32_t ul2hwPort = switchDeviceUl->AddSwitchPort (hw2ulLink.Get (1))->GetPortNo ();
+
+  NetDeviceContainer sw2ulLink = csmaHelper.Install (switchNodeSw, switchNodeUl);
+  uint32_t sw2ulPort = switchDeviceSw->AddSwitchPort (sw2ulLink.Get (0))->GetPortNo ();
+  uint32_t ul2swPort = switchDeviceUl->AddSwitchPort (sw2ulLink.Get (1))->GetPortNo ();
+
+  NetDeviceContainer hw2dlLink = csmaHelper.Install (switchNodeHw, switchNodeDl);
+  uint32_t hw2dlPort = switchDeviceHw->AddSwitchPort (hw2dlLink.Get (0))->GetPortNo ();
+  uint32_t dl2hwPort = switchDeviceDl->AddSwitchPort (hw2dlLink.Get (1))->GetPortNo ();
+
+  NetDeviceContainer sw2dlLink = csmaHelper.Install (switchNodeSw, switchNodeDl);
+  uint32_t sw2dlPort = switchDeviceSw->AddSwitchPort (sw2dlLink.Get (0))->GetPortNo ();
+  uint32_t dl2swPort = switchDeviceDl->AddSwitchPort (sw2dlLink.Get (1))->GetPortNo ();
+
+  // Notify the controller about switches (don't change the oder!)
+  controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort);
+  controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
+
+  controllerApp->NotifyUlSwitch (switchDeviceUl, ul2hwPort, ul2swPort);
+  controllerApp->NotifyDlSwitch (switchDeviceDl, dl2hwPort, dl2swPort);
+
 
   // Get the number of hosts from global attribute.
   UintegerValue uintegerValue;
@@ -171,120 +228,62 @@ main (int argc, char *argv[])
   uint32_t numHosts = uintegerValue.Get ();
   NS_LOG_INFO ("Number of hosts set to " << numHosts);
 
-//   // Use the CsmaHelper to connect host nodes to the switch node
-//   CsmaHelper csmaHelper;
-//   csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-//   csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (200))); //40KM Fiber cable
+  // Create the server and set its name.
+  Ptr<Node> serverNode = CreateObject<Node> ();
+  Names::Add ("sv", serverNode);
 
-//   Ptr<OFSwitch13InternalHelper> of13Helper =
-//     CreateObjectWithAttributes<OFSwitch13InternalHelper> ("ChannelType",EnumValue (OFSwitch13Helper::DEDICATEDP2P)); // configuracao do OF
+  // Create the client nodes and set their names.
+  NodeContainer clientNodes;
+  clientNodes.Create (numHosts);
+  for (uint32_t i = 0; i < numHosts; i++)
+    {
+      std::ostringstream name;
+      name << "cl" << i + 1;
+      Names::Add (name.str (), clientNodes.Get (i));
+    }
 
-//   Ptr<Node> controllerNode = CreateObject<Node> ();
-//   Ptr<CustomController> controllerApp = CreateObject<CustomController> ();
-//   of13Helper->InstallController (controllerNode,controllerApp);
+  // Install the TCP/IP stack into hosts nodes.
+  InternetStackHelper internet;
+  internet.Install (serverNode);
+  internet.Install (clientNodes);
 
-//   // Create the switch node
-//   Ptr<Node> switchNodeUl = CreateObject<Node> ();
-//   Ptr<Node> switchNodeDl = CreateObject<Node> ();
-//   Ptr<Node> switchNodeHw = CreateObject<Node> ();
-//   Ptr<Node> switchNodeSw = CreateObject<Node> ();
+  // Configure IPv4 addresses helper.
+  Ipv4AddressHelper ipv4helpr;
+  ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0");
 
+  // Configure the CsmaHelper to connect hosts to switches.
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0)));
 
-//   Names::Add ("ul",switchNodeUl);
-//   Names::Add ("dl",switchNodeDl);
-//   Names::Add ("hw",switchNodeHw);
-//   Names::Add ("sw",switchNodeSw);
+  // Connect the single server node to the DL switch.
+  NetDeviceContainer dl2svLink = csmaHelper.Install (switchNodeDl, serverNode);
+  uint32_t dl2svPort = switchDeviceDl->AddSwitchPort (dl2svLink.Get (0))->GetPortNo ();
+  NetDeviceContainer serverDevice (dl2svLink.Get (1));
 
-//   Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0); //1
-//   Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0); //2
+  // Assign IP to the server node and notify the controller.
+  Ipv4InterfaceContainer serverIpIface = ipv4helpr.Assign (serverDevice);
+  controllerApp->NotifyDl2Sv (dl2svPort, serverIpIface.GetAddress (0));
 
-//   of13Helper->SetDeviceAttribute ("ProcessingCapacity",StringValue ("1Gbps"));
-//   of13Helper->SetDeviceAttribute ("FlowTableSize",UintegerValue (512));
+  NetDeviceContainer clientDevices;
+  Ipv4InterfaceContainer clientIpIfaces;
+  for (uint32_t i = 0; i < numHosts; i++)
+    {
+      // Connect each client node to the UL switch.
+      NetDeviceContainer ul2clLink = csmaHelper.Install (switchNodeUl, clientNodes.Get (i));
+      uint32_t ul2clPort = switchDeviceUl->AddSwitchPort (ul2clLink.Get (0))->GetPortNo ();
+      clientDevices.Add (ul2clLink.Get (1));
 
-//   Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0); //3
+      // Assign IP to the client node and notify the controller.
+      Ipv4InterfaceContainer tempIpIface = ipv4helpr.Assign (ul2clLink.Get (1));
+      clientIpIfaces.Add (tempIpIface);
+      controllerApp->NotifyUl2Cl (ul2clPort, tempIpIface.GetAddress (0));
+    }
 
-//   of13Helper->SetDeviceAttribute ("ProcessingCapacity",StringValue ("10Mbps"));
-//   of13Helper->SetDeviceAttribute ("FlowTableSize",UintegerValue (10000));
-//   of13Helper->SetDeviceAttribute ("TcamDelay",TimeValue (MicroSeconds (100)));
-//   Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0); //4
+  // Configure the OpenFlow channel and notify the controller that we are done.
+  of13Helper->CreateOpenFlowChannels ();
+  controllerApp->NotifyTopologyBuilt ();
 
-//   NetDeviceContainer hw2ulLink = csmaHelper.Install (NodeContainer (switchNodeHw, switchNodeUl));
-//   uint32_t hw2ulPort = switchDeviceHw->AddSwitchPort (hw2ulLink.Get (0))->GetPortNo ();
-//   uint32_t ul2hwPort = switchDeviceUl->AddSwitchPort (hw2ulLink.Get (1))->GetPortNo ();
-
-//   NetDeviceContainer sw2ulLink = csmaHelper.Install (NodeContainer (switchNodeSw, switchNodeUl));
-//   uint32_t sw2ulPort = switchDeviceSw->AddSwitchPort (sw2ulLink.Get (0))->GetPortNo ();
-//   uint32_t ul2swPort = switchDeviceUl->AddSwitchPort (sw2ulLink.Get (1))->GetPortNo ();
-
-//   NetDeviceContainer hw2dlLink = csmaHelper.Install (NodeContainer (switchNodeHw, switchNodeDl));
-//   uint32_t hw2dlPort = switchDeviceHw->AddSwitchPort (hw2dlLink.Get (0))->GetPortNo ();
-//   uint32_t dl2hwPort = switchDeviceDl->AddSwitchPort (hw2dlLink.Get (1))->GetPortNo ();
-
-//   NetDeviceContainer sw2dlLink = csmaHelper.Install (NodeContainer (switchNodeSw, switchNodeDl));
-//   uint32_t sw2dlPort = switchDeviceSw->AddSwitchPort (sw2dlLink.Get (0))->GetPortNo ();
-//   uint32_t dl2swPort = switchDeviceDl->AddSwitchPort (sw2dlLink.Get (1))->GetPortNo ();
-
-//   Ptr<Node> routerDl = CreateObject<Node>();
-//   Ptr<Node> routerUl = CreateObject<Node>();
-//   NetDeviceContainer routerDevices;
-
-//   csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-//   csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0))); //40KM Fiber cable
-
-//   NetDeviceContainer router2dlLink = csmaHelper.Install (NodeContainer (routerDl, switchNodeDl));
-//   uint32_t dl2routerPort = switchDeviceDl->AddSwitchPort (router2dlLink.Get (1))->GetPortNo ();
-//   routerDevices.Add (router2dlLink.Get (0));
-
-//   NetDeviceContainer router2ulLink = csmaHelper.Install (NodeContainer (routerUl, switchNodeUl));
-//   uint32_t ul2routerPort = switchDeviceUl->AddSwitchPort (router2ulLink.Get (1))->GetPortNo ();
-//   routerDevices.Add (router2ulLink.Get (0));
-
-//   controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort); //Nao trocar ordem
-//   controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
-//   controllerApp->NotifyUlSwitch (switchDeviceUl, ul2hwPort, ul2swPort, ul2routerPort);
-//   controllerApp->NotifyDlSwitch (switchDeviceDl, dl2hwPort, dl2swPort, dl2routerPort);
-
-//   of13Helper->CreateOpenFlowChannels ();
-
-//   //Create two host nodes
-//   NodeContainer clientNodes;
-//   NodeContainer serverNodes;
-//   clientNodes.Create (numHosts);
-//   serverNodes.Create (numHosts);
-
-//   NetDeviceContainer clientDevices;
-//   NetDeviceContainer serverDevices;
-//   NetDeviceContainer clientRouterDevices;
-//   NetDeviceContainer serverRouterDevices;
-
-//   for (uint32_t i = 0; i < numHosts; i++)
-//     {
-//       NetDeviceContainer clientTemp = csmaHelper.Install (NodeContainer (routerUl, clientNodes.Get (i)));
-//       clientRouterDevices.Add (clientTemp.Get (0));
-//       clientDevices.Add (clientTemp.Get (1));
-
-//       NetDeviceContainer serverTemp = csmaHelper.Install (NodeContainer (routerDl, serverNodes.Get (i)));
-
-//       serverRouterDevices.Add (serverTemp.Get (0));
-//       serverDevices.Add (serverTemp.Get (1));
-//     }
-
-//   // Install the TCP/IP stack into hosts nodes
-//   InternetStackHelper internet;
-//   internet.Install (clientNodes);
-//   internet.Install (serverNodes);
-//   internet.Install (routerDl);
-//   internet.Install (routerUl);
-
-//   // Set IPv4 host addresses
-//   Ipv4AddressHelper ipv4helpr;
-//   ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0", "0.1.0.0");
-//   //ipv4helpr.SetBase ("10.1.0.0", "255.255.0.0");
-//   Ipv4InterfaceContainer clientIpIfaces = ipv4helpr.Assign (clientDevices);
-
-//   //ipv4helpr.SetBase ("10.2.0.0", "255.255.0.0");
-//   ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0","0.2.0.0");//"255.255.0.0"
-//   Ipv4InterfaceContainer serverIpIfaces = ipv4helpr.Assign (serverDevices);
+  // Configuring traffic helper.
 
 //   SvelteAppHelper autoPilotHelper (AutoPilotClient::GetTypeId (),AutoPilotServer::GetTypeId ());
 //   SvelteAppHelper bufferedVideoHelper (BufferedVideoClient::GetTypeId (),BufferedVideoServer::GetTypeId ());
@@ -341,42 +340,30 @@ main (int argc, char *argv[])
 
 //     }
 
+
+
+
+
 //   Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
-
-// /*
-//   ApplicationContainer pingApps;
-
-//   for (int i = 0; i < numHosts; i++)
-//     {
-//       // Configure ping application between hosts
-//       V4PingHelper pingHelper = V4PingHelper (serverIpIfaces.GetAddress (i));
-//       pingHelper.SetAttribute ("Verbose", BooleanValue (true));
-//       pingApps.Add (pingHelper.Install (clientNodes.Get (i)));
-//     }
-//   pingApps.Start (Seconds (1));
-// */
-
-
-//   // Always enable datapath stats.
-//   of13Helper->EnableDatapathStats ("switch-stats", true);
-
-//   // Selective enable pcap traces at hosts and OpenFlow network.  
-//   if (pcap)
-//     {
-//       of13Helper->EnableOpenFlowPcap ("openflow");
-
-//       csmaHelper.EnablePcap ("clients", clientDevices);
-//       csmaHelper.EnablePcap ("servers", serverDevices);
-//       csmaHelper.EnablePcap ("switchUl", NodeContainer (switchNodeUl));
-//       csmaHelper.EnablePcap ("switchDl", NodeContainer (switchNodeDl));
-//       csmaHelper.EnablePcap ("switchHw", NodeContainer (switchNodeHw));
-//       csmaHelper.EnablePcap ("switchSw", NodeContainer (switchNodeSw));
-//     }
-
 //   Config::ConnectWithoutContext (
 //     "/NodeList/*/ApplicationList/*/$ns3::CustomController/BearerRequest",
 //     MakeCallback (&RequestCounter));
 
+  // Always enable datapath stats.
+  StringValue stringValue;
+  GlobalValue::GetValueByName ("OutputPrefix", stringValue);
+  std::string outPrefix = stringValue.Get ();
+  of13Helper->EnableDatapathStats (outPrefix + "switch-stats", true);
+
+  // Selective enable pcap traces at hosts and OpenFlow network.
+  if (pcap)
+    {
+      of13Helper->EnableOpenFlowPcap (outPrefix + "openflow", true);
+
+      csmaHelper.EnablePcap (outPrefix + "client", clientDevices, true);
+      csmaHelper.EnablePcap (outPrefix + "server", serverDevice,  true);
+      csmaHelper.EnablePcap (outPrefix + "switch", switchNodes,   true);
+    }
 
   // Populating routing and ARP tables. The 'perfect' ARP used here comes from
   // the patch at https://www.nsnam.org/bugzilla/show_bug.cgi?id=187. This
@@ -500,14 +487,12 @@ EnableVerbose (bool enable)
           LOG_PREFIX_FUNC | LOG_PREFIX_TIME | LOG_LEVEL_ALL);
       NS_UNUSED (logLevelAll);
 
-      // Common components.
-      LogComponentEnable ("Main",                     logLevelWarnInfo);
+      // Scenario components.
+      LogComponentEnable ("Main",                     logLevelAll);
+      LogComponentEnable ("CustomController",         logLevelAll);
 
-      // // Helper components.
       // LogComponentEnable ("TrafficHelper",            logLevelWarnInfo);
-
       // LogComponentEnable ("TrafficManager",           logLevelWarnInfo);
-
 
       // // Applications.
       // LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);
