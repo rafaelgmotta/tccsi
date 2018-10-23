@@ -379,8 +379,7 @@ void ForceDefaults ()
   // Since we are using an external OpenFlow library that expects complete
   // network packets, we must enable checksum computations.
   //
-  Config::SetGlobal (
-    "ChecksumEnabled", BooleanValue (true));
+  Config::SetGlobal ("ChecksumEnabled", BooleanValue (true));
 
   //
   // The minimum (default) value for TCP MSS is 536, and there's no dynamic MTU
@@ -390,8 +389,7 @@ void ForceDefaults ()
   // headers, and 52 bytes for default TCP/IP headers. Don't use higher values
   // to avoid packet fragmentation.
   //
-  Config::SetDefault (
-    "ns3::TcpSocket::SegmentSize", UintegerValue (1400));
+  Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1400));
 
   //
   // The default number of TCP connection attempts before returning a failure
@@ -399,8 +397,7 @@ void ForceDefaults ()
   // We are going to keep the number of attempts but with a small interval of
   // 500 ms between them.
   //
-  Config::SetDefault (
-    "ns3::TcpSocket::ConnTimeout", TimeValue (MilliSeconds (500)));
+  Config::SetDefault ("ns3::TcpSocket::ConnTimeout", TimeValue (MilliSeconds (500)));
 
   //
   // The default TCP minimum retransmit timeout value is set to 1 second in
@@ -409,15 +406,13 @@ void ForceDefaults ()
   // leading to many unnecessary retransmitted packets. We are going to use an
   // intermediate value.
   //
-  Config::SetDefault (
-    "ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (500)));
+  Config::SetDefault ("ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (500)));
 
   //
   // Increasing the default MTU for virtual network devices, which are used as
   // OpenFlow virtual port devices.
   //
-  Config::SetDefault (
-    "ns3::VirtualNetDevice::Mtu", UintegerValue (3000));
+  Config::SetDefault ("ns3::VirtualNetDevice::Mtu", UintegerValue (3000));
 
   //
   // Whenever possible, use the full-duplex CSMA channel to improve throughput.
@@ -426,20 +421,17 @@ void ForceDefaults ()
   // This implementation is not available in default ns-3 code, and I got it
   // from https://codereview.appspot.com/187880044/
   //
-  Config::SetDefault (
-    "ns3::CsmaChannel::FullDuplex", BooleanValue (true));
+  Config::SetDefault ("ns3::CsmaChannel::FullDuplex", BooleanValue (true));
 
   //
   // Fix the number of output priority queues on every switch port to 3.
   //
-  Config::SetDefault (
-    "ns3::OFSwitch13Queue::NumQueues", UintegerValue (3));
+  Config::SetDefault ("ns3::OFSwitch13Queue::NumQueues", UintegerValue (3));
 
   //
   // Enable detailed OpenFlow datapath statistics.
   //
-  Config::SetDefault (
-    "ns3::OFSwitch13StatsCalculator::PipelineDetails", BooleanValue (true));
+  Config::SetDefault ("ns3::OFSwitch13StatsCalculator::PipelineDetails", BooleanValue (true));
 }
 
 void
@@ -477,29 +469,22 @@ EnableVerbose (bool enable)
       // Scenario components.
       LogComponentEnable ("Main",                     logLevelAll);
       LogComponentEnable ("CustomController",         logLevelAll);
-
       // LogComponentEnable ("TrafficHelper",            logLevelWarnInfo);
-      // LogComponentEnable ("TrafficManager",           logLevelWarnInfo);
+      LogComponentEnable ("TrafficManager",           logLevelWarnInfo);
+      LogComponentEnable ("TrafficStatsCalculator",   logLevelWarnInfo);
 
-      // // Applications.
-      // LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);
-      // LogComponentEnable ("BufferedVideoClient",      logLevelWarnInfo);
-      // LogComponentEnable ("BufferedVideoServer",      logLevelWarnInfo);
-      // LogComponentEnable ("HttpClient",               logLevelWarnInfo);
-      // LogComponentEnable ("HttpServer",               logLevelWarnInfo);
-      // LogComponentEnable ("LiveVideoClient",          logLevelWarnInfo);
-      // LogComponentEnable ("LiveVideoServer",          logLevelWarnInfo);
-      // LogComponentEnable ("SvelteClient",             logLevelWarnInfo);
-      // LogComponentEnable ("SvelteServer",             logLevelWarnInfo);
-      // LogComponentEnable ("SvelteUdpClient",          logLevelWarnInfo);
-      // LogComponentEnable ("SvelteUdpServer",          logLevelWarnInfo);
-
-      // // Statistic components.
-      // LogComponentEnable ("AdmissionStatsCalculator", logLevelWarnInfo);
-      // LogComponentEnable ("BackhaulStatsCalculator",  logLevelWarnInfo);
-      // LogComponentEnable ("LteRrcStatsCalculator",    logLevelWarnInfo);
-      // LogComponentEnable ("PgwTftStatsCalculator",    logLevelWarnInfo);
-      // LogComponentEnable ("TrafficStatsCalculator",   logLevelWarnInfo);
+      // Applications.
+      LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);
+      LogComponentEnable ("BufferedVideoClient",      logLevelWarnInfo);
+      LogComponentEnable ("BufferedVideoServer",      logLevelWarnInfo);
+      LogComponentEnable ("HttpClient",               logLevelWarnInfo);
+      LogComponentEnable ("HttpServer",               logLevelWarnInfo);
+      LogComponentEnable ("LiveVideoClient",          logLevelWarnInfo);
+      LogComponentEnable ("LiveVideoServer",          logLevelWarnInfo);
+      LogComponentEnable ("SvelteClient",             logLevelWarnInfo);
+      LogComponentEnable ("SvelteServer",             logLevelWarnInfo);
+      LogComponentEnable ("SvelteUdpClient",          logLevelWarnInfo);
+      LogComponentEnable ("SvelteUdpServer",          logLevelWarnInfo);
 
       // OFSwitch13 module components.
       LogComponentEnable ("OFSwitch13Controller",     logLevelWarn);
