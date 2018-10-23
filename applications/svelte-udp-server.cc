@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2017 University of Campinas (Unicamp)
+ * Copyright (c) 2018 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,56 +18,63 @@
  */
 
 #include <ns3/seq-ts-header.h>
-#include "auto-pilot-server.h"
+#include "svelte-udp-server.h"
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[Pilot server teid " << GetTeidHex () << "] ";
+  std::clog << "[" << GetAppName ()                       \
+            << " server teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("AutoPilotServer");
-NS_OBJECT_ENSURE_REGISTERED (AutoPilotServer);
+NS_LOG_COMPONENT_DEFINE ("SvelteUdpServer");
+NS_OBJECT_ENSURE_REGISTERED (SvelteUdpServer);
 
 TypeId
-AutoPilotServer::GetTypeId (void)
+SvelteUdpServer::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::AutoPilotServer")
-    .SetParent<SvelteServerApp> ()
-    .AddConstructor<AutoPilotServer> ()
+  static TypeId tid = TypeId ("ns3::SvelteUdpServer")
+    .SetParent<SvelteServer> ()
+    .AddConstructor<SvelteUdpServer> ()
+
+    // These attributes must be configured for the desired traffic pattern.
+    .AddAttribute ("PktInterval",
+                   "A random variable used to pick the packet "
+                   "inter-arrival time [s].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
+                   MakePointerAccessor (&SvelteUdpServer::m_pktInterRng),
+                   MakePointerChecker <RandomVariableStream> ())
+    .AddAttribute ("PktSize",
+                   "A random variable used to pick the packet size [bytes].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=100]"),
+                   MakePointerAccessor (&SvelteUdpServer::m_pktSizeRng),
+                   MakePointerChecker <RandomVariableStream> ())
   ;
   return tid;
 }
 
-AutoPilotServer::AutoPilotServer ()
+SvelteUdpServer::SvelteUdpServer ()
   : m_sendEvent (EventId ())
 {
   NS_LOG_FUNCTION (this);
-
-  // The server sends a 1KB packet with uniformly distributed average time
-  // between packets ranging from 0.999 to 1.001 sec.
-  m_pktSize = 1024;
-  m_intervalRng = CreateObject<UniformRandomVariable> ();
-  m_intervalRng->SetAttribute ("Min", DoubleValue (0.999));
-  m_intervalRng->SetAttribute ("Max", DoubleValue (1.001));
 }
 
-AutoPilotServer::~AutoPilotServer ()
+SvelteUdpServer::~SvelteUdpServer ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-AutoPilotServer::DoDispose (void)
+SvelteUdpServer::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
   m_sendEvent.Cancel ();
-  SvelteServerApp::DoDispose ();
+  SvelteServer::DoDispose ();
 }
 
 void
-AutoPilotServer::StartApplication (void)
+SvelteUdpServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -77,11 +84,11 @@ AutoPilotServer::StartApplication (void)
   m_socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), m_localPort));
   m_socket->Connect (InetSocketAddress::ConvertFrom (m_clientAddress));
   m_socket->SetRecvCallback (
-    MakeCallback (&AutoPilotServer::ReadPacket, this));
+    MakeCallback (&SvelteUdpServer::ReadPacket, this));
 }
 
 void
-AutoPilotServer::StopApplication ()
+SvelteUdpServer::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -94,37 +101,37 @@ AutoPilotServer::StopApplication ()
 }
 
 void
-AutoPilotServer::NotifyStart ()
+SvelteUdpServer::NotifyStart ()
 {
   NS_LOG_FUNCTION (this);
 
   // Chain up to reset statistics.
-  SvelteServerApp::NotifyStart ();
+  SvelteServer::NotifyStart ();
 
   // Start traffic.
   m_sendEvent.Cancel ();
-  m_sendEvent = Simulator::Schedule (Seconds (m_intervalRng->GetValue ()),
-                                     &AutoPilotServer::SendPacket, this);
+  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
+                                     &SvelteUdpServer::SendPacket, this);
 }
 
 void
-AutoPilotServer::NotifyForceStop ()
+SvelteUdpServer::NotifyForceStop ()
 {
   NS_LOG_FUNCTION (this);
 
   // Chain up just for log.
-  SvelteServerApp::NotifyForceStop ();
+  SvelteServer::NotifyForceStop ();
 
   // Stop traffic.
   m_sendEvent.Cancel ();
 }
 
 void
-AutoPilotServer::SendPacket ()
+SvelteUdpServer::SendPacket ()
 {
   NS_LOG_FUNCTION (this);
 
-  Ptr<Packet> packet = Create<Packet> (m_pktSize);
+  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetValue ());
 
   SeqTsHeader seqTs;
   seqTs.SetSeq (NotifyTx (packet->GetSize () + seqTs.GetSerializedSize ()));
@@ -142,12 +149,12 @@ AutoPilotServer::SendPacket ()
     }
 
   // Schedule next packet transmission.
-  m_sendEvent = Simulator::Schedule (Seconds (m_intervalRng->GetValue ()),
-                                     &AutoPilotServer::SendPacket, this);
+  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
+                                     &SvelteUdpServer::SendPacket, this);
 }
 
 void
-AutoPilotServer::ReadPacket (Ptr<Socket> socket)
+SvelteUdpServer::ReadPacket (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 

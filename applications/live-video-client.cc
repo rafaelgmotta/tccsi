@@ -34,7 +34,7 @@ TypeId
 LiveVideoClient::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::LiveVideoClient")
-    .SetParent<SvelteClientApp> ()
+    .SetParent<SvelteClient> ()
     .AddConstructor<LiveVideoClient> ()
     //
     // For traffic length, we are considering a statistic that the majority of
@@ -76,7 +76,7 @@ LiveVideoClient::Start ()
   NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
 
   // Chain up to reset statistics, notify server, and fire start trace source.
-  SvelteClientApp::Start ();
+  SvelteClient::Start ();
 }
 
 void
@@ -86,7 +86,7 @@ LiveVideoClient::DoDispose (void)
 
   m_lengthRng = 0;
   m_stopEvent.Cancel ();
-  SvelteClientApp::DoDispose ();
+  SvelteClient::DoDispose ();
 }
 
 void
@@ -94,9 +94,9 @@ LiveVideoClient::NotifyConstructionCompleted (void)
 {
   NS_LOG_FUNCTION (this);
 
-  SetAttribute ("AppName", StringValue ("LiveVid"));
+  SetAttribute ("AppName", StringValue ("LivVideo"));
 
-  SvelteClientApp::NotifyConstructionCompleted ();
+  SvelteClient::NotifyConstructionCompleted ();
 }
 
 void
@@ -108,7 +108,7 @@ LiveVideoClient::ForceStop ()
   m_stopEvent.Cancel ();
 
   // Chain up to notify server.
-  SvelteClientApp::ForceStop ();
+  SvelteClient::ForceStop ();
 
   // Notify the stopped application one second later.
   Simulator::Schedule (Seconds (1), &LiveVideoClient::NotifyStop, this, false);

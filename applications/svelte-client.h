@@ -18,8 +18,8 @@
  * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#ifndef SVELTE_CLIENT_APP_H
-#define SVELTE_CLIENT_APP_H
+#ifndef SVELTE_CLIENT_H
+#define SVELTE_CLIENT_H
 
 #include <ns3/core-module.h>
 #include <ns3/lte-module.h>
@@ -30,7 +30,7 @@
 
 namespace ns3 {
 
-class SvelteServerApp;
+class SvelteServer;
 
 /**
  * \ingroup svelte
@@ -47,13 +47,13 @@ class SvelteServerApp;
  * application traffic is sent within GTP tunnels over EPC interfaces. These
  * informations are also saved here for further usage.
  */
-class SvelteClientApp : public Application
+class SvelteClient : public Application
 {
-  friend class SvelteServerApp;
+  friend class SvelteServer;
 
 public:
-  SvelteClientApp ();            //!< Default constructor.
-  virtual ~SvelteClientApp ();   //!< Dummy destructor, see DoDispose.
+  SvelteClient ();            //!< Default constructor.
+  virtual ~SvelteClient ();   //!< Dummy destructor, see DoDispose.
 
   /**
    * Get the type ID.
@@ -68,16 +68,16 @@ public:
   bool IsActive (void) const;
   Time GetMaxOnTime (void) const;
   bool IsForceStop (void) const;
-  Ptr<EpcTft> GetTft (void) const;
   EpsBearer GetEpsBearer (void) const;
+  uint8_t GetEpsBearerId (void) const;
   uint32_t GetTeid (void) const;
   std::string GetTeidHex (void) const;
-  Ptr<SvelteServerApp> GetServerApp (void) const;
+  Ptr<SvelteServer> GetServerApp (void) const;
   Ptr<const AppStatsCalculator> GetAppStats (void) const;
   Ptr<const AppStatsCalculator> GetServerAppStats (void) const;
 
-  void SetTft (Ptr<EpcTft> value);
   void SetEpsBearer (EpsBearer value);
+  void SetEpsBearerId (uint8_t value);
   void SetTeid (uint32_t value);
   //\}
 
@@ -86,7 +86,7 @@ public:
    * \param serverApp The pointer to server application.
    * \param serverAddress The Inet socket address of the server.
    */
-  void SetServer (Ptr<SvelteServerApp> serverApp, Address serverAddress);
+  void SetServer (Ptr<SvelteServer> serverApp, Address serverAddress);
 
   /**
    * Start this application. Reset internal counters, notify the server
@@ -95,10 +95,10 @@ public:
   virtual void Start ();
 
   /**
-   * TracedCallback signature for Ptr<SvelteClientApp>.
+   * TracedCallback signature for Ptr<SvelteClient>.
    * \param app The client application.
    */
-  typedef void (*EpcAppTracedCallback)(Ptr<SvelteClientApp> app);
+  typedef void (*EpcAppTracedCallback)(Ptr<SvelteClient> app);
 
 protected:
   /** Destructor implementation */
@@ -138,16 +138,16 @@ protected:
   Ptr<Socket>             m_socket;           //!< Local socket.
   uint16_t                m_localPort;        //!< Local port.
   Address                 m_serverAddress;    //!< Server address.
-  Ptr<SvelteServerApp>    m_serverApp;        //!< Server application.
+  Ptr<SvelteServer>       m_serverApp;        //!< Server application.
 
   /** Trace source fired when application start. */
-  TracedCallback<Ptr<SvelteClientApp> > m_appStartTrace;
+  TracedCallback<Ptr<SvelteClient> > m_appStartTrace;
 
   /** Trace source fired when application stops. */
-  TracedCallback<Ptr<SvelteClientApp> > m_appStopTrace;
+  TracedCallback<Ptr<SvelteClient> > m_appStopTrace;
 
   /** Trace source fired when application reports an error. */
-  TracedCallback<Ptr<SvelteClientApp> > m_appErrorTrace;
+  TracedCallback<Ptr<SvelteClient> > m_appErrorTrace;
 
 private:
   /**
@@ -161,11 +161,11 @@ private:
   EventId       m_forceStop;      //!< Max duration stop event.
   bool          m_forceStopFlag;  //!< Force stop flag.
 
-  // LTE EPC metadata
-  Ptr<EpcTft>   m_tft;            //!< Traffic flow template for this app.
+  // LTE EPS metadata
   EpsBearer     m_bearer;         //!< EPS bearer info.
+  uint8_t       m_bearerId;       //!< EPS bearer ID.
   uint32_t      m_teid;           //!< GTP TEID associated with this app.
 };
 
 } // namespace ns3
-#endif /* SVELTE_CLIENT_APP_H */
+#endif /* SVELTE_CLIENT_H */

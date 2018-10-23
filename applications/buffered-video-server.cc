@@ -74,7 +74,7 @@ TypeId
 BufferedVideoServer::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::BufferedVideoServer")
-    .SetParent<SvelteServerApp> ()
+    .SetParent<SvelteServer> ()
     .AddConstructor<BufferedVideoServer> ()
     .AddAttribute ("TraceFilename",
                    "Name of file to load a trace from.",
@@ -135,7 +135,7 @@ BufferedVideoServer::DoDispose (void)
 
   m_lengthRng = 0;
   m_entries.clear ();
-  SvelteServerApp::DoDispose ();
+  SvelteServer::DoDispose ();
 }
 
 void

@@ -26,19 +26,6 @@
 #include <ns3/internet-module.h>
 #include <ns3/ofswitch13-module.h>
 
-#include "applications/auto-pilot-server.h"
-#include "applications/auto-pilot-client.h"
-#include "applications/buffered-video-server.h"
-#include "applications/buffered-video-client.h"
-#include "applications/http-server.h"
-#include "applications/http-client.h"
-#include "applications/live-video-server.h"
-#include "applications/live-video-client.h"
-#include "applications/svelte-app-helper.h"
-#include "applications/svelte-client-app.h"
-#include "applications/svelte-server-app.h"
-#include "applications/voip-client.h"
-#include "applications/voip-server.h"
 #include "custom-controller.h"
 #include "traffic-manager.h"
 #include "traffic-stats-calculator.h"
@@ -304,39 +291,39 @@ main (int argc, char *argv[])
 //       clientNode->AggregateObject (manager);
 // //tcp
 //       //bufferedVideo
-//       Ptr<SvelteClientApp> appBufferedVideo = bufferedVideoHelper.Install (clientNode, serverNodes.Get (i),
+//       Ptr<SvelteClient> appBufferedVideo = bufferedVideoHelper.Install (clientNode, serverNodes.Get (i),
 //                                                                            clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 1);
 //       appBufferedVideo->SetEpsBearer (EpsBearer (EpsBearer::NGBR_VIDEO_TCP_OPERATOR,GbrQosInformation ()));
 //       appBufferedVideo->SetTeid (imsi + 1);
-//       manager->AddSvelteClientApp (appBufferedVideo);
+//       manager->AddSvelteClient (appBufferedVideo);
 
 //       //http
-//       Ptr<SvelteClientApp> appHttp = httpHelper.Install (clientNode, serverNodes.Get (i),
+//       Ptr<SvelteClient> appHttp = httpHelper.Install (clientNode, serverNodes.Get (i),
 //                                                          clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 2);
 //       appHttp->SetEpsBearer (EpsBearer (EpsBearer::NGBR_VIDEO_TCP_PREMIUM,GbrQosInformation ()));
 //       appHttp->SetTeid (imsi + 2);
-//       manager->AddSvelteClientApp (appHttp);
+//       manager->AddSvelteClient (appHttp);
 // //udp
 //       //autoPilot
-//       Ptr<SvelteClientApp> appAutoPilot = autoPilotHelper.Install (clientNode, serverNodes.Get (i),
+//       Ptr<SvelteClient> appAutoPilot = autoPilotHelper.Install (clientNode, serverNodes.Get (i),
 //                                                                    clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 3);
 //       appAutoPilot->SetEpsBearer (EpsBearer (EpsBearer::GBR_GAMING,GbrQosInformation ()));
 //       appAutoPilot->SetTeid (imsi + 3);
-//       manager->AddSvelteClientApp (appAutoPilot);
+//       manager->AddSvelteClient (appAutoPilot);
 
 //       //liveVideo //FIXME TraceFilename
-//       Ptr<SvelteClientApp> appLiveVideo = liveVideoHelper.Install (clientNode, serverNodes.Get (i),
+//       Ptr<SvelteClient> appLiveVideo = liveVideoHelper.Install (clientNode, serverNodes.Get (i),
 //                                                                    clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 4);
 //       appLiveVideo->SetEpsBearer (EpsBearer (EpsBearer::GBR_NON_CONV_VIDEO,GbrQosInformation ()));
 //       appLiveVideo->SetTeid (imsi + 4);
-//       manager->AddSvelteClientApp (appLiveVideo);
+//       manager->AddSvelteClient (appLiveVideo);
 
 //       //voip
-//       Ptr<SvelteClientApp> appVoip = voipHelper.Install (clientNode, serverNodes.Get (i),
+//       Ptr<SvelteClient> appVoip = voipHelper.Install (clientNode, serverNodes.Get (i),
 //                                                          clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 5);
 //       appVoip->SetEpsBearer (EpsBearer (EpsBearer::GBR_CONV_VOICE,GbrQosInformation ()));
 //       appVoip->SetTeid (imsi + 5);
-//       manager->AddSvelteClientApp (appVoip);
+//       manager->AddSvelteClient (appVoip);
 
 //     }
 

@@ -1,7 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2013 Federal University of Uberlandia
- *               2014 University of Campinas (Unicamp)
+ * Copyright (c) 2018 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,23 +14,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  *
- * Author: Saulo da Mata <damata.saulo@gmail.com>
- *         Luciano Chaves <luciano@lrc.ic.unicamp.br>
+ * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#ifndef VOIP_CLIENT_H
-#define VOIP_CLIENT_H
+#ifndef SVELTE_UDP_CLIENT_H
+#define SVELTE_UDP_CLIENT_H
 
-#include "svelte-client-app.h"
+#include "svelte-client.h"
 
 namespace ns3 {
 
 /**
  * \ingroup svelteApps
- * This is the client side of a VoIP traffic generator, sending and receiving
- * UDP datagrams following VoIP traffic pattern.
+ * This is the client side of a generic UDP traffic generator, sending and
+ * receiving UDP datagrams following the configure traffic pattern.
  */
-class VoipClient : public SvelteClientApp
+class SvelteUdpClient : public SvelteClient
 {
 public:
   /**
@@ -40,20 +38,17 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  VoipClient ();             //!< Default constructor.
-  virtual ~VoipClient ();    //!< Dummy destructor, see DoDispose.
+  SvelteUdpClient ();             //!< Default constructor.
+  virtual ~SvelteUdpClient ();    //!< Dummy destructor, see DoDispose.
 
-  // Inherited from SvelteClientApp.
+  // Inherited from SvelteClient.
   void Start ();
 
 protected:
   // Inherited from Object.
   virtual void DoDispose (void);
 
-  // Inherited from ObjectBase.
-  virtual void NotifyConstructionCompleted (void);
-
-  // Inherited from SvelteClientApp.
+  // Inherited from SvelteClient.
   void ForceStop ();
 
 private:
@@ -72,12 +67,12 @@ private:
    */
   void SendPacket ();
 
-  Time                        m_interval;     //!< Interval between packets.
-  uint32_t                    m_pktSize;      //!< Packet size.
+  Ptr<RandomVariableStream>   m_lengthRng;    //!< Traffic length.
+  Ptr<RandomVariableStream>   m_pktInterRng;  //!< Pkt inter-arrival time.
+  Ptr<RandomVariableStream>   m_pktSizeRng;   //!< Pkt size.
   EventId                     m_sendEvent;    //!< SendPacket event.
   EventId                     m_stopEvent;    //!< Stop event.
-  Ptr<RandomVariableStream>   m_lengthRng;    //!< Random traffic length.
 };
 
 } // namespace ns3
-#endif /* VOIP_CLIENT_H */
+#endif /* SVELTE_UDP_CLIENT_H */

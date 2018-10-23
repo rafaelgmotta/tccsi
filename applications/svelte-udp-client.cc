@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2017 University of Campinas (Unicamp)
+ * Copyright (c) 2018 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,100 +18,91 @@
  */
 
 #include <ns3/seq-ts-header.h>
-#include "auto-pilot-client.h"
+#include "svelte-udp-client.h"
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[Pilot client teid " << GetTeidHex () << "] ";
+  std::clog << "[" << GetAppName ()                       \
+            << " client teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("AutoPilotClient");
-NS_OBJECT_ENSURE_REGISTERED (AutoPilotClient);
+NS_LOG_COMPONENT_DEFINE ("SvelteUdpClient");
+NS_OBJECT_ENSURE_REGISTERED (SvelteUdpClient);
 
 TypeId
-AutoPilotClient::GetTypeId (void)
+SvelteUdpClient::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::AutoPilotClient")
-    .SetParent<SvelteClientApp> ()
-    .AddConstructor<AutoPilotClient> ()
-    //
-    // For traffic length, we are using a synthetic average length of 90
-    // seconds with 10secs stdev. This will force the application to
-    // periodically stop and report statistics.
-    //
+  static TypeId tid = TypeId ("ns3::SvelteUdpClient")
+    .SetParent<SvelteClient> ()
+    .AddConstructor<SvelteUdpClient> ()
+
+    // These attributes must be configured for the desired traffic pattern.
+    .AddAttribute ("PktInterval",
+                   "A random variable used to pick the packet "
+                   "inter-arrival time [s].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
+                   MakePointerAccessor (&SvelteUdpClient::m_pktInterRng),
+                   MakePointerChecker <RandomVariableStream> ())
+    .AddAttribute ("PktSize",
+                   "A random variable used to pick the packet size [bytes].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=100]"),
+                   MakePointerAccessor (&SvelteUdpClient::m_pktSizeRng),
+                   MakePointerChecker <RandomVariableStream> ())
     .AddAttribute ("TrafficLength",
                    "A random variable used to pick the traffic length [s].",
-                   StringValue (
-                     "ns3::NormalRandomVariable[Mean=90.0|Variance=100.0]"),
-                   MakePointerAccessor (&AutoPilotClient::m_lengthRng),
+                   StringValue ("ns3::ConstantRandomVariable[Constant=30.0]"),
+                   MakePointerAccessor (&SvelteUdpClient::m_lengthRng),
                    MakePointerChecker <RandomVariableStream> ())
   ;
   return tid;
 }
 
-AutoPilotClient::AutoPilotClient ()
+SvelteUdpClient::SvelteUdpClient ()
   : m_sendEvent (EventId ()),
   m_stopEvent (EventId ())
 {
   NS_LOG_FUNCTION (this);
-
-  // The client sends a 1KB packet with uniformly distributed average time
-  // between packets ranging from 0.025 to 0.1 sec.
-  m_pktSize = 1024;
-  m_intervalRng = CreateObject<UniformRandomVariable> ();
-  m_intervalRng->SetAttribute ("Min", DoubleValue (0.025));
-  m_intervalRng->SetAttribute ("Max", DoubleValue (0.1));
 }
 
-AutoPilotClient::~AutoPilotClient ()
+SvelteUdpClient::~SvelteUdpClient ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-AutoPilotClient::Start ()
+SvelteUdpClient::Start ()
 {
   NS_LOG_FUNCTION (this);
 
   // Schedule the ForceStop method to stop traffic generation on both sides
-  // based on call length.
+  // based on traffic length.
   Time sTime = Seconds (std::abs (m_lengthRng->GetValue ()));
-  m_stopEvent = Simulator::Schedule (sTime, &AutoPilotClient::ForceStop, this);
+  m_stopEvent = Simulator::Schedule (sTime, &SvelteUdpClient::ForceStop, this);
   NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
 
   // Chain up to reset statistics, notify server, and fire start trace source.
-  SvelteClientApp::Start ();
+  SvelteClient::Start ();
 
   // Start traffic.
   m_sendEvent.Cancel ();
-  m_sendEvent = Simulator::Schedule (Seconds (m_intervalRng->GetValue ()),
-                                     &AutoPilotClient::SendPacket, this);
+  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
+                                     &SvelteUdpClient::SendPacket, this);
 }
 
 void
-AutoPilotClient::DoDispose (void)
+SvelteUdpClient::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
   m_lengthRng = 0;
   m_stopEvent.Cancel ();
   m_sendEvent.Cancel ();
-  SvelteClientApp::DoDispose ();
+  SvelteClient::DoDispose ();
 }
 
 void
-AutoPilotClient::NotifyConstructionCompleted (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  SetAttribute ("AppName", StringValue ("Pilot"));
-
-  SvelteClientApp::NotifyConstructionCompleted ();
-}
-
-void
-AutoPilotClient::ForceStop ()
+SvelteUdpClient::ForceStop ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -120,14 +111,14 @@ AutoPilotClient::ForceStop ()
   m_sendEvent.Cancel ();
 
   // Chain up to notify server.
-  SvelteClientApp::ForceStop ();
+  SvelteClient::ForceStop ();
 
   // Notify the stopped application one second later.
-  Simulator::Schedule (Seconds (1), &AutoPilotClient::NotifyStop, this, false);
+  Simulator::Schedule (Seconds (1), &SvelteUdpClient::NotifyStop, this, false);
 }
 
 void
-AutoPilotClient::StartApplication (void)
+SvelteUdpClient::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -137,11 +128,11 @@ AutoPilotClient::StartApplication (void)
   m_socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), m_localPort));
   m_socket->Connect (InetSocketAddress::ConvertFrom (m_serverAddress));
   m_socket->SetRecvCallback (
-    MakeCallback (&AutoPilotClient::ReadPacket, this));
+    MakeCallback (&SvelteUdpClient::ReadPacket, this));
 }
 
 void
-AutoPilotClient::StopApplication ()
+SvelteUdpClient::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -154,11 +145,11 @@ AutoPilotClient::StopApplication ()
 }
 
 void
-AutoPilotClient::SendPacket ()
+SvelteUdpClient::SendPacket ()
 {
   NS_LOG_FUNCTION (this);
 
-  Ptr<Packet> packet = Create<Packet> (m_pktSize);
+  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetValue ());
 
   SeqTsHeader seqTs;
   seqTs.SetSeq (NotifyTx (packet->GetSize () + seqTs.GetSerializedSize ()));
@@ -176,12 +167,12 @@ AutoPilotClient::SendPacket ()
     }
 
   // Schedule next packet transmission.
-  m_sendEvent = Simulator::Schedule (Seconds (m_intervalRng->GetValue ()),
-                                     &AutoPilotClient::SendPacket, this);
+  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
+                                     &SvelteUdpClient::SendPacket, this);
 }
 
 void
-AutoPilotClient::ReadPacket (Ptr<Socket> socket)
+SvelteUdpClient::ReadPacket (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 

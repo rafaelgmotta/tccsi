@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
- *         Luciano J. Chaves <ljerezchaves@gmail.com> 
+ *         Luciano J. Chaves <ljerezchaves@gmail.com>
  */
 
 #ifndef TRAFFIC_MANAGER_H
@@ -30,7 +30,7 @@
 namespace ns3 {
 
 class CustomController;
-class SvelteClientApp;
+class SvelteClient;
 
 /**
  * \ingroup svelteLogical
@@ -54,7 +54,7 @@ public:
    * Add a new application to this manager.
    * \param app The application pointer.
    */
-  void AddSvelteClientApp (Ptr<SvelteClientApp> app);
+  void AddSvelteClient (Ptr<SvelteClient> app);
 
   /**
    * Trace sink notified when new session is created.
@@ -87,7 +87,7 @@ private:
    * application associated with each bearer/tunnel.
    * \param app The application pointer.
    */
-  void AppStartTry (Ptr<SvelteClientApp> app);
+  void AppStartTry (Ptr<SvelteClient> app);
 
   /**
    * Member function called by applications to notify this manager when traffic
@@ -95,7 +95,7 @@ private:
    * application restart attempt.
    * \param app The application pointer.
    */
-  void NotifyAppStop (Ptr<SvelteClientApp> app);
+  void NotifyAppStop (Ptr<SvelteClient> app);
 
   /**
    * Set the time for the next attempt to start the application.
@@ -105,13 +105,13 @@ private:
    * simulation.
    * \param app The application pointer.
    */
-  void SetNextAppStartTry (Ptr<SvelteClientApp> app);
+  void SetNextAppStartTry (Ptr<SvelteClient> app);
 
   /**
    * Get the absolute time for the next attemp to start the application.
    * \param app The application pointer.
    */
-  Time GetNextAppStartTry (Ptr<SvelteClientApp> app) const;
+  Time GetNextAppStartTry (Ptr<SvelteClient> app) const;
 
   Ptr<RandomVariableStream> m_poissonRng;       //!< Inter-arrival traffic.
   bool                      m_restartApps;      //!< Continuously restart apps.
@@ -122,7 +122,7 @@ private:
   uint32_t                  m_defaultTeid;      //!< Default UE tunnel TEID.
 
   /** Map saving application pointer / next start time. */
-  typedef std::map<Ptr<SvelteClientApp>, Time> AppTimeMap_t;
+  typedef std::map<Ptr<SvelteClient>, Time> AppTimeMap_t;
   AppTimeMap_t              m_timeByApp;        //!< Application map.
 };
 

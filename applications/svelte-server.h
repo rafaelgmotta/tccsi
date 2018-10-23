@@ -18,8 +18,8 @@
  * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#ifndef SVELTE_SERVER_APP_H
-#define SVELTE_SERVER_APP_H
+#ifndef SVELTE_SERVER_H
+#define SVELTE_SERVER_H
 
 #include <ns3/core-module.h>
 #include <ns3/lte-module.h>
@@ -30,7 +30,7 @@
 
 namespace ns3 {
 
-class SvelteClientApp;
+class SvelteClient;
 
 /**
  * \ingroup svelteApps
@@ -38,13 +38,13 @@ class SvelteClientApp;
  * architecture. Only server applications (those which will be installed into
  * web server node) should extend this class.
  */
-class SvelteServerApp : public Application
+class SvelteServer : public Application
 {
-  friend class SvelteClientApp;
+  friend class SvelteClient;
 
 public:
-  SvelteServerApp ();            //!< Default constructor.
-  virtual ~SvelteServerApp ();   //!< Dummy destructor, see DoDispose.
+  SvelteServer ();            //!< Default constructor.
+  virtual ~SvelteServer ();   //!< Dummy destructor, see DoDispose.
 
   /**
    * Get the type ID.
@@ -58,7 +58,7 @@ public:
   bool IsActive (void) const;
   bool IsForceStop (void) const;
   std::string GetTeidHex (void) const;
-  Ptr<SvelteClientApp> GetClientApp (void) const;
+  Ptr<SvelteClient> GetClientApp (void) const;
   Ptr<const AppStatsCalculator> GetAppStats (void) const;
   //\}
 
@@ -67,7 +67,7 @@ public:
    * \param clientApp The pointer to client application.
    * \param clientAddress The Inet socket address of the client.
    */
-  void SetClient (Ptr<SvelteClientApp> clientApp, Address clientAddress);
+  void SetClient (Ptr<SvelteClient> clientApp, Address clientAddress);
 
 protected:
   /** Destructor implementation. */
@@ -108,8 +108,8 @@ protected:
   Ptr<Socket>             m_socket;           //!< Local socket.
   uint16_t                m_localPort;        //!< Local port.
   Address                 m_clientAddress;    //!< Client address.
-  Ptr<SvelteClientApp>    m_clientApp;        //!< Client application.
+  Ptr<SvelteClient>       m_clientApp;        //!< Client application.
 };
 
 } // namespace ns3
-#endif /* SVELTE_SERVER_APP_H */
+#endif /* SVELTE_SERVER_H */

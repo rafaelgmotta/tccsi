@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2017 University of Campinas (Unicamp)
+ * Copyright (c) 2018 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,19 +17,19 @@
  * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#ifndef AUTO_PILOT_SERVER_H
-#define AUTO_PILOT_SERVER_H
+#ifndef SVELTE_UDP_SERVER_H
+#define SVELTE_UDP_SERVER_H
 
-#include "svelte-server-app.h"
+#include "svelte-server.h"
 
 namespace ns3 {
 
 /**
  * \ingroup svelteApps
- * This is the server side of a auto pilot MTC traffic generator, sending and
- * receiving UDP datagrams following auto pilot traffic pattern.
+ * This is the server side of a generic UDP traffic generator, sending and
+ * receiving UDP datagrams following the configure traffic pattern.
  */
-class AutoPilotServer : public SvelteServerApp
+class SvelteUdpServer : public SvelteServer
 {
 public:
   /**
@@ -38,8 +38,8 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  AutoPilotServer ();             //!< Default constructor.
-  virtual ~AutoPilotServer ();    //!< Dummy destructor, see DoDispose.
+  SvelteUdpServer ();             //!< Default constructor.
+  virtual ~SvelteUdpServer ();    //!< Dummy destructor, see DoDispose.
 
 protected:
   // Inherited from Object.
@@ -50,7 +50,7 @@ private:
   virtual void StartApplication (void);
   virtual void StopApplication (void);
 
-  // Inherited from SvelteServerApp.
+  // Inherited from SvelteServer.
   void NotifyStart ();
   void NotifyForceStop ();
 
@@ -65,10 +65,10 @@ private:
    */
   void SendPacket ();
 
-  Ptr<RandomVariableStream>   m_intervalRng;  //!< Rand interval between pkts.
-  uint32_t                    m_pktSize;      //!< Packet size.
+  Ptr<RandomVariableStream>   m_pktInterRng;  //!< Pkt inter-arrival time.
+  Ptr<RandomVariableStream>   m_pktSizeRng;   //!< Pkt size.
   EventId                     m_sendEvent;    //!< SendPacket event.
 };
 
 } // namespace ns3
-#endif /* AUTO_PILOT_SERVER_H */
+#endif /* SVELTE_UDP_SERVER_H */

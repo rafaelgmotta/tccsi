@@ -18,57 +18,57 @@
  * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#include "svelte-app-helper.h"
+#include "application-helper.h"
 
 namespace ns3 {
 
-SvelteAppHelper::SvelteAppHelper ()
+ApplicationHelper::ApplicationHelper ()
 {
-  m_clientFactory.SetTypeId (SvelteClientApp::GetTypeId ());
-  m_serverFactory.SetTypeId (SvelteServerApp::GetTypeId ());
+  m_clientFactory.SetTypeId (SvelteClient::GetTypeId ());
+  m_serverFactory.SetTypeId (SvelteServer::GetTypeId ());
 }
 
-SvelteAppHelper::SvelteAppHelper (TypeId clientType, TypeId serverType)
+ApplicationHelper::ApplicationHelper (TypeId clientType, TypeId serverType)
 {
   m_clientFactory.SetTypeId (clientType);
   m_serverFactory.SetTypeId (serverType);
 }
 
 void
-SvelteAppHelper::SetClientAttribute (std::string name,
-                                     const AttributeValue &value)
+ApplicationHelper::SetClientAttribute (std::string name,
+                                       const AttributeValue &value)
 {
   m_clientFactory.Set (name, value);
 }
 
 void
-SvelteAppHelper::SetServerAttribute (std::string name,
-                                     const AttributeValue &value)
+ApplicationHelper::SetServerAttribute (std::string name,
+                                       const AttributeValue &value)
 {
   m_serverFactory.Set (name, value);
 }
 
-Ptr<SvelteClientApp>
-SvelteAppHelper::Install (Ptr<Node> clientNode, Ptr<Node> serverNode,
-                          Ipv4Address clientAddr, Ipv4Address serverAddr,
-                          uint16_t port, Ipv4Header::DscpType dscp)
+Ptr<SvelteClient>
+ApplicationHelper::Install (Ptr<Node> clientNode, Ptr<Node> serverNode,
+                            Ipv4Address clientAddr, Ipv4Address serverAddr,
+                            uint16_t port, Ipv4Header::DscpType dscp)
 {
-  Ptr<SvelteClientApp> clientApp;
-  clientApp = m_clientFactory.Create ()->GetObject<SvelteClientApp> ();
+  Ptr<SvelteClient> clientApp;
+  clientApp = m_clientFactory.Create ()->GetObject<SvelteClient> ();
   NS_ASSERT_MSG (clientApp, "Invalid client type id.");
 
-  Ptr<SvelteServerApp> serverApp;
-  serverApp = m_serverFactory.Create ()->GetObject<SvelteServerApp> ();
+  Ptr<SvelteServer> serverApp;
+  serverApp = m_serverFactory.Create ()->GetObject<SvelteServer> ();
   NS_ASSERT_MSG (serverApp, "Invalid server type id.");
 
   InetSocketAddress serverInetAddr (serverAddr, port);
-  //serverInetAddr.SetTos (Dscp2Tos (dscp));
+  // serverInetAddr.SetTos (Dscp2Tos (dscp));
   clientApp->SetAttribute ("LocalPort", UintegerValue (port));
   clientApp->SetServer (serverApp, serverInetAddr);
   clientNode->AddApplication (clientApp);
 
   InetSocketAddress clientInetAddr (clientAddr, port);
-  //clientInetAddr.SetTos (Dscp2Tos (dscp));
+  // clientInetAddr.SetTos (Dscp2Tos (dscp));
   serverApp->SetAttribute ("LocalPort", UintegerValue (port));
   serverApp->SetClient (clientApp, clientInetAddr);
   serverNode->AddApplication (serverApp);

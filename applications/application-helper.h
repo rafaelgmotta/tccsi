@@ -18,14 +18,14 @@
  * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
-#ifndef SVELTE_APP_HELPER_H
-#define SVELTE_APP_HELPER_H
+#ifndef APPLICATION_HELPER_H
+#define APPLICATION_HELPER_H
 
 #include <ns3/core-module.h>
 #include <ns3/network-module.h>
 #include <ns3/internet-module.h>
-#include "svelte-client-app.h"
-#include "svelte-server-app.h"
+#include "../applications/svelte-client.h"
+#include "../applications/svelte-server.h"
 
 namespace ns3 {
 
@@ -34,17 +34,17 @@ namespace ns3 {
  * This helper will make life easier for people trying to set up client/server
  * applications on the SVELTE architecture.
  */
-class SvelteAppHelper
+class ApplicationHelper
 {
 public:
-  SvelteAppHelper ();     //!< Default constructor.
+  ApplicationHelper ();     //!< Default constructor.
 
   /**
    * Complete constructor.
    * \param clientType The TypeId of client application class.
    * \param serverType The TypeId of server application class.
    */
-  SvelteAppHelper (TypeId clientType, TypeId serverType);
+  ApplicationHelper (TypeId clientType, TypeId serverType);
 
   /**
    * Record an attribute to be set in each client application.
@@ -70,7 +70,7 @@ public:
    * \param dscp The DSCP value used to set the socket type of service field.
    * \return The client application created.
    */
-  Ptr<SvelteClientApp> Install (
+  Ptr<SvelteClient> Install (
     Ptr<Node> clientNode, Ptr<Node> serverNode, Ipv4Address clientAddr,
     Ipv4Address serverAddr, uint16_t port,
     Ipv4Header::DscpType dscp = Ipv4Header::DscpDefault);
@@ -81,4 +81,4 @@ private:
 };
 
 } // namespace ns3
-#endif /* SVELTE_APP_HELPER_H */
+#endif /* APPLICATION_HELPER_H */

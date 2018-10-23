@@ -70,7 +70,7 @@ CustomController::GetTypeId (void)
 }
 
 bool
-CustomController::DedicatedBearerRequest (Ptr<SvelteClientApp> app, uint64_t imsi)
+CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
@@ -155,7 +155,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClientApp> app, uint64_t ims
 }
 
 bool
-CustomController::DedicatedBearerRelease (Ptr<SvelteClientApp> app, uint64_t imsi)
+CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 

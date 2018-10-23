@@ -27,7 +27,7 @@
 
 namespace ns3 {
 
-class SvelteClientApp;
+class SvelteClient;
 
 
 /**
@@ -77,7 +77,7 @@ private:
    * \param context Context information.
    * \param app The client application.
    */
-  void DumpStatistics (std::string context, Ptr<SvelteClientApp> app);
+  void DumpStatistics (std::string context, Ptr<SvelteClient> app);
 
   /**
    * Reset internal counters.
@@ -85,7 +85,7 @@ private:
    * \param context Context information.
    * \param app The client application.
    */
- // void ResetCounters (std::string context, Ptr<SvelteClientApp> app);
+  // void ResetCounters (std::string context, Ptr<SvelteClient> app);
 
   /**
    * Trace sink fired when a packet is dropped while exceeding pipeline load
@@ -101,7 +101,7 @@ private:
    * \param packet The dropped packet.
    * \param meterId The meter ID that dropped the packet.
    */
- // void MeterDropPacket (std::string context, Ptr<const Packet> packet,
+  // void MeterDropPacket (std::string context, Ptr<const Packet> packet,
 //                       uint32_t meterId);
 
   /**

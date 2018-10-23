@@ -21,7 +21,7 @@
 #include <iomanip>
 #include <iostream>
 #include "traffic-stats-calculator.h"
-#include "applications/svelte-client-app.h"
+#include "applications/svelte-client.h"
 
 using namespace std;
 
@@ -35,7 +35,7 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
   NS_LOG_FUNCTION (this);
 
   // Connect this stats calculator to required trace sources.
- 
+
   // Config::Connect (
   //   "/NodeList/*/$ns3::OFSwitch13Device/LoadDrop",//FIXME overload
   //   MakeCallback (&TrafficStatsCalculator::OverloadDropPacket, this));
@@ -46,14 +46,14 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
   //   "/NodeList/*/$ns3::OFSwitch13Device/PortList/*/PortQueue/Drop",
   //   MakeCallback (&TrafficStatsCalculator::QueueDropPacket, this));
   // Config::Connect (
-  //   "/NodeList/*/ApplicationList/*/$ns3::SvelteClientApp/AppStart",
+  //   "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStart",
   //   MakeCallback (&TrafficStatsCalculator::ResetCounters, this));
- 
+
   Config::Connect (
-    "/NodeList/*/ApplicationList/*/$ns3::SvelteClientApp/AppStop",
+    "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStop",
     MakeCallback (&TrafficStatsCalculator::DumpStatistics, this));
   Config::Connect (
-    "/NodeList/*/ApplicationList/*/$ns3::SvelteClientApp/AppError",
+    "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppError",
     MakeCallback (&TrafficStatsCalculator::DumpStatistics, this));
 }
 
@@ -73,7 +73,7 @@ TrafficStatsCalculator::GetTypeId (void)
                    StringValue ("traffic-qos-l7-app"),
                    MakeStringAccessor (&TrafficStatsCalculator::m_appFilename),
                    MakeStringChecker ())
-    
+
   ;
   return tid;
 }
@@ -123,7 +123,7 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
     << " " << setw (11) << "Teid"
     << " " << setw (8) << "AppName"
     << " " << setw (6) << "Ul/Dl";
- 
+
   AppStatsCalculator::PrintHeader (*m_appWrapper->GetStream ());
   *m_appWrapper->GetStream () << std::endl;
 
@@ -132,41 +132,41 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
 
 void
 TrafficStatsCalculator::DumpStatistics (std::string context,
-                                        Ptr<SvelteClientApp> app)
+                                        Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
 
   uint32_t teid = app->GetTeid ();
   char teidStr[11];
-  sprintf(teidStr,"0x%08x",teid);
+  sprintf (teidStr,"0x%08x",teid);
 
-  if (app->GetAppName()!="LiveVid")
+  if (app->GetAppName () != "LiveVid")
     {
       // Dump uplink statistics.
       *m_appWrapper->GetStream ()
         << " " << setw (8) << Simulator::Now ().GetSeconds ()
-        << " " << setw (11) << std::string(teidStr)
+        << " " << setw (11) << std::string (teidStr)
         << " " << setw (8) << app->GetAppName ()
         << " " << setw (6) << DirectionStr (Direction::ULINK)
         << *app->GetServerAppStats ()
         << std::endl;
     }
 
-      // Dump downlink statistics.
+  // Dump downlink statistics.
 
-      *m_appWrapper->GetStream ()
-        << " " << setw (8) << Simulator::Now ().GetSeconds ()
-        << " " << setw (11) <<  std::string(teidStr)
-        << " " << setw (8) << app->GetAppName ()
-        << " " << setw (6) << DirectionStr (Direction::DLINK)
-        << *app->GetAppStats ()
-        << std::endl;
-    
+  *m_appWrapper->GetStream ()
+    << " " << setw (8) << Simulator::Now ().GetSeconds ()
+    << " " << setw (11) <<  std::string (teidStr)
+    << " " << setw (8) << app->GetAppName ()
+    << " " << setw (6) << DirectionStr (Direction::DLINK)
+    << *app->GetAppStats ()
+    << std::endl;
+
 }
 /*
 void
 TrafficStatsCalculator::ResetCounters (std::string context,
-                                       Ptr<SvelteClientApp> app)
+                                       Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app);
 

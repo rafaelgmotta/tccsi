@@ -16,12 +16,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
- *         Luciano J. Chaves <ljerezchaves@gmail.com> 
+ *         Luciano J. Chaves <ljerezchaves@gmail.com>
  */
 
 #include "traffic-manager.h"
 #include "custom-controller.h"
-#include "applications/svelte-client-app.h"
+#include "applications/svelte-client.h"
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
@@ -77,12 +77,12 @@ TrafficManager::GetTypeId (void)
 }
 
 void
-TrafficManager::AddSvelteClientApp (Ptr<SvelteClientApp> app)
+TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << app);
 
   // Save the application pointer.
-  std::pair<Ptr<SvelteClientApp>, Time> entry (app, Time ());
+  std::pair<Ptr<SvelteClient>, Time> entry (app, Time ());
   auto ret = m_timeByApp.insert (entry);
   if (ret.second == false)
     {
@@ -121,7 +121,7 @@ TrafficManager::SessionCreatedCallback (
   // For each application, set the corresponding TEID.
   for (auto const &ait : m_timeByApp)
     {
-      Ptr<SvelteClientApp> app = ait.first;
+      Ptr<SvelteClient> app = ait.first;
       app->SetTeid (m_defaultTeid);
 
       // Using the TFT to match bearers and applications.
@@ -175,7 +175,7 @@ TrafficManager::NotifyConstructionCompleted ()
 }
 
 void
-TrafficManager::AppStartTry (Ptr<SvelteClientApp> app)
+TrafficManager::AppStartTry (Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << app);
 
@@ -199,7 +199,7 @@ TrafficManager::AppStartTry (Ptr<SvelteClientApp> app)
   if (authorized)
     {
       // Schedule the application start for +1 second.
-      Simulator::Schedule (Seconds (1), &SvelteClientApp::Start, app);
+      Simulator::Schedule (Seconds (1), &SvelteClient::Start, app);
       NS_LOG_INFO ("App " << app->GetNameTeid () << " will start in +1 sec.");
       if (app->GetMaxOnTime ().IsZero () == false)
         {
@@ -210,7 +210,7 @@ TrafficManager::AppStartTry (Ptr<SvelteClientApp> app)
 }
 
 void
-TrafficManager::NotifyAppStop (Ptr<SvelteClientApp> app)
+TrafficManager::NotifyAppStop (Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << app);
 
@@ -241,7 +241,7 @@ TrafficManager::NotifyAppStop (Ptr<SvelteClientApp> app)
 }
 
 void
-TrafficManager::SetNextAppStartTry (Ptr<SvelteClientApp> app)
+TrafficManager::SetNextAppStartTry (Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << app);
 
@@ -301,7 +301,7 @@ TrafficManager::SetNextAppStartTry (Ptr<SvelteClientApp> app)
 }
 
 Time
-TrafficManager::GetNextAppStartTry (Ptr<SvelteClientApp> app) const
+TrafficManager::GetNextAppStartTry (Ptr<SvelteClient> app) const
 {
   NS_LOG_FUNCTION (this << app);
 

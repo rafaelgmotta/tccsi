@@ -26,7 +26,7 @@
 #include <ns3/core-module.h>
 #include <ns3/network-module.h>
 #include <ns3/lte-module.h>
-#include "applications/svelte-client-app.h"
+#include "applications/svelte-client.h"
 
 namespace ns3 {
 
@@ -49,7 +49,7 @@ public:
    * \param imsi The client identifier.
    * \return True if succeeded, false otherwise.
    */
-  bool DedicatedBearerRequest (Ptr<SvelteClientApp> app, uint64_t imsi);
+  bool DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi);
 
   /**
    * Release a dedicated traffic.
@@ -57,7 +57,7 @@ public:
    * \param imsi The client identifier.
    * \return True if succeeded, false otherwise.
    */
-  bool DedicatedBearerRelease (Ptr<SvelteClientApp> app, uint64_t imsi);
+  bool DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi);
 
   /**
    * Notify this controller of a new OpenFlow switch configured.
