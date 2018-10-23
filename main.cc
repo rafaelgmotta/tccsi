@@ -18,21 +18,6 @@
  * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
  *         Luciano J. Chaves <ljerezchaves@gmail.com>
  */
-/*
-*
-*
-*         link1+------------------+       link4     +------------------+     link3    +------------------+ link2
-*   Host 0 === | OFswitch esquerda1 |  ==========  | OpenFlow switch3 |  ==========  | OpenFlow switch direita2 |  === Host 1
-*              +------------------+                 +------------------+              +------------------+
-*              port 1:host          \                                          /  port 1: host
-*              port 2:switch 2       \  link5   +------------------+   link6  /   port 2: switch 2
-*              port 3:switch 4         =======  | OpenFlow switch4 |  =======     port 3: switch 4
-*                                                        +------------------+
-
-host 0 para host 1: switches 1,2,3
-host 1 para host 0: switches 3,4,1
-
-*/
 
 #include <ns3/csma-module.h>
 #include <ns3/internet-apps-module.h>
