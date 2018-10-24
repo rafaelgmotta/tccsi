@@ -25,9 +25,9 @@
 #include <ns3/core-module.h>
 #include <ns3/internet-module.h>
 #include <ns3/ofswitch13-module.h>
-
 #include "custom-controller.h"
 #include "traffic-manager.h"
+#include "traffic-helper.h"
 #include "traffic-stats-calculator.h"
 
 using namespace ns3;
@@ -271,6 +271,7 @@ main (int argc, char *argv[])
   controllerApp->NotifyTopologyBuilt ();
 
   // Configuring traffic helper.
+  Ptr<TrafficHelper> trafficHelper = CreateObject<TrafficHelper> (controllerApp, serverNode, clientNodes);
 
 //   SvelteAppHelper autoPilotHelper (AutoPilotClient::GetTypeId (),AutoPilotServer::GetTypeId ());
 //   SvelteAppHelper bufferedVideoHelper (BufferedVideoClient::GetTypeId (),BufferedVideoServer::GetTypeId ());
@@ -469,9 +470,9 @@ EnableVerbose (bool enable)
       // Scenario components.
       LogComponentEnable ("Main",                     logLevelAll);
       LogComponentEnable ("CustomController",         logLevelAll);
-      // LogComponentEnable ("TrafficHelper",            logLevelWarnInfo);
-      LogComponentEnable ("TrafficManager",           logLevelWarnInfo);
-      LogComponentEnable ("TrafficStatsCalculator",   logLevelWarnInfo);
+      LogComponentEnable ("TrafficHelper",            logLevelAll);
+      LogComponentEnable ("TrafficManager",           logLevelAll);
+      LogComponentEnable ("TrafficStatsCalculator",   logLevelAll);
 
       // Applications.
       LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);

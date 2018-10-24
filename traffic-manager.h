@@ -57,19 +57,16 @@ public:
   void AddSvelteClient (Ptr<SvelteClient> app);
 
   /**
-   * Trace sink notified when new session is created.
-   * This will be used to get the teid for each bearer created.
-   * \param imsi The IMSI UE identifier.
-   * \param bearerList The list of context bearers created.
-   */
-  //void SessionCreatedCallback (uint64_t imsi, BearerContextList_t bearerList);
-
-  /**
    * Set the IMSI attribute.
    * \param value The ISMI value.
    */
   void SetImsi (uint64_t value);
-  void SetController (Ptr<CustomController> ptr);
+
+  /**
+   * Set the OpenFlow controller.
+   * \param controller The controller.
+   */
+  void SetController (Ptr<CustomController> controller);
 
 protected:
   /** Destructor implementation. */

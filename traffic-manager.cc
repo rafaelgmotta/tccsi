@@ -102,50 +102,20 @@ TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
   NS_LOG_INFO ("First start attempt for app " << app->GetAppName () <<
                " will occur at " << firstTry.GetSeconds () << "s.");
 }
-/*
-void
-TrafficManager::SessionCreatedCallback (
-  uint64_t imsi, BearerContextList_t bearerList)
-{
-  NS_LOG_FUNCTION (this);
 
-  // Check the IMSI match for current manager.
-  if (imsi != m_imsi)
-    {
-      return;
-    }
-
-  m_ctrlApp = UeInfo::GetPointer (imsi)->GetSliceCtrl ();
-  m_defaultTeid = bearerList.front ().sgwFteid.teid;
-
-  // For each application, set the corresponding TEID.
-  for (auto const &ait : m_timeByApp)
-    {
-      Ptr<SvelteClient> app = ait.first;
-      app->SetTeid (m_defaultTeid);
-
-      // Using the TFT to match bearers and applications.
-      Ptr<EpcTft> tft = app->GetTft ();
-      if (tft)
-        {
-          for (auto const &bit : bearerList)
-            {
-              if (bit.tft == tft)
-                {
-                  app->SetTeid (bit.sgwFteid.teid);
-                }
-            }
-        }
-      NS_LOG_INFO ("App " << app->GetNameTeid ());
-    }
-}
-*/
 void
 TrafficManager::SetImsi (uint64_t value)
 {
   NS_LOG_FUNCTION (this << value);
 
   m_imsi = value;
+}
+
+
+void
+TrafficManager::SetController (Ptr<CustomController> controller)
+{
+  m_ctrlApp = controller;
 }
 
 void
@@ -308,11 +278,6 @@ TrafficManager::GetNextAppStartTry (Ptr<SvelteClient> app) const
   auto it = m_timeByApp.find (app);
   NS_ASSERT_MSG (it != m_timeByApp.end (), "Can't find app " << app);
   return it->second;
-}
-
-void TrafficManager::SetController (Ptr<CustomController> ptr)
-{
-  m_ctrlApp = ptr;
 }
 
 } // namespace ns3
