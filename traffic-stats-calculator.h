@@ -81,10 +81,23 @@ private:
     uint32_t activeBearers; //!< Number of active bearers.
   };
 
+  /** Metadata associated to packet drops. */
+  struct DropStats
+  {
+    uint32_t load;        //!< Number of overload drops.
+    uint32_t meter;       //!< Number of meter drops.
+    uint32_t queue;       //!< Number of queue drops.
+  };
+
   /**
    * Dump admission statistics into file.
    */
   void DumpAdmission ();
+
+  /**
+   * Dump admission statistics into file.
+   */
+  void DumpDrop ();
 
   /**
    * Dump traffic statistics into file.
@@ -96,24 +109,18 @@ private:
 
   /**
    * Notify a new traffic request.
+   * \param context Context information.
    * \param teid The traffic TEID.
    * \param accepted The request status.
    */
-  void NotifyRequest (uint32_t teid, bool accepted);
+  void NotifyRequest (std::string context, uint32_t teid, bool accepted);
 
   /**
    * Notify a traffic release.
+   * \param context Context information.
    * \param teid The traffic TEID.
    */
-  void NotifyRelease (uint32_t teid);
-
-  /**
-   * Reset internal counters.
-   * Trace sink fired when application traffic starts.
-   * \param context Context information.
-   * \param app The client application.
-   */
-  // void ResetCounters (std::string context, Ptr<SvelteClient> app);
+  void NotifyRelease (std::string context, uint32_t teid);
 
   /**
    * Trace sink fired when a packet is dropped while exceeding pipeline load
@@ -121,7 +128,7 @@ private:
    * \param context Context information.
    * \param packet The dropped packet.
    */
-//  void OverloadDropPacket (std::string context, Ptr<const Packet> packet);
+  void OverloadDropPacket (std::string context, Ptr<const Packet> packet);
 
   /**
    * Trace sink fired when a packets is dropped by meter band.
@@ -129,23 +136,25 @@ private:
    * \param packet The dropped packet.
    * \param meterId The meter ID that dropped the packet.
    */
-  // void MeterDropPacket (std::string context, Ptr<const Packet> packet,
-//                       uint32_t meterId);
+  void MeterDropPacket (std::string context, Ptr<const Packet> packet,
+                        uint32_t meterId);
 
   /**
    * Trace sink fired when a packet is dropped by OpenFlow port queues.
    * \param context Context information.
    * \param packet The dropped packet.
    */
-//  void QueueDropPacket (std::string context, Ptr<const Packet> packet);
+  void QueueDropPacket (std::string context, Ptr<const Packet> packet);
 
   AdmStats                  m_admStats;     //!< Admission stats.
+  DropStats                 m_drpStats;
 
   std::string               m_admFilename;  //!< AdmStats filename.
   Ptr<OutputStreamWrapper>  m_admWrapper;   //!< AdmStats file wrapper.
-
   std::string               m_appFilename;  //!< AppStats filename.
   Ptr<OutputStreamWrapper>  m_appWrapper;   //!< AppStats file wrapper.
+  std::string               m_drpFilename;  //!< DrpStats filename.
+  Ptr<OutputStreamWrapper>  m_drpWrapper;   //!< DrpStats file wrapper.
 };
 
 } // namespace ns3

@@ -35,30 +35,26 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Clear adm stats.
+  // Clear adm and drp stats.
   memset (&m_admStats, 0, sizeof (AdmStats));
+  memset (&m_drpStats, 0, sizeof (DropStats));
 
   // Connect this stats calculator to required trace sources.
-  Config::ConnectWithoutContext (
+  Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::CustomController/Request",
     MakeCallback (&TrafficStatsCalculator::NotifyRequest, this));
-  Config::ConnectWithoutContext (
+  Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::CustomController/Release",
     MakeCallback (&TrafficStatsCalculator::NotifyRelease, this));
-
-  // Config::Connect (
-  //   "/NodeList/*/$ns3::OFSwitch13Device/LoadDrop",//FIXME overload
-  //   MakeCallback (&TrafficStatsCalculator::OverloadDropPacket, this));
-  // Config::Connect (
-  //   "/NodeList/*/$ns3::OFSwitch13Device/MeterDrop",
-  //   MakeCallback (&TrafficStatsCalculator::MeterDropPacket, this));
-  // Config::Connect (
-  //   "/NodeList/*/$ns3::OFSwitch13Device/PortList/*/PortQueue/Drop",
-  //   MakeCallback (&TrafficStatsCalculator::QueueDropPacket, this));
-  // Config::Connect (
-  //   "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStart",
-  //   MakeCallback (&TrafficStatsCalculator::ResetCounters, this));
-
+  Config::Connect (
+    "/NodeList/*/$ns3::OFSwitch13Device/OverloadDrop",
+    MakeCallback (&TrafficStatsCalculator::OverloadDropPacket, this));
+  Config::Connect (
+    "/NodeList/*/$ns3::OFSwitch13Device/MeterDrop",
+    MakeCallback (&TrafficStatsCalculator::MeterDropPacket, this));
+  Config::Connect (
+    "/NodeList/*/$ns3::OFSwitch13Device/PortList/*/PortQueue/Drop",
+    MakeCallback (&TrafficStatsCalculator::QueueDropPacket, this));
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStop",
     MakeCallback (&TrafficStatsCalculator::DumpTraffic, this));
@@ -88,6 +84,11 @@ TrafficStatsCalculator::GetTypeId (void)
                    StringValue ("traffic-qos-l7-app"),
                    MakeStringAccessor (&TrafficStatsCalculator::m_appFilename),
                    MakeStringChecker ())
+    .AddAttribute ("DrpStatsFilename",
+                   "Filename packet drop statistics.",
+                   StringValue ("packet-drops"),
+                   MakeStringAccessor (&TrafficStatsCalculator::m_drpFilename),
+                   MakeStringChecker ())
   ;
   return tid;
 }
@@ -113,6 +114,7 @@ TrafficStatsCalculator::DoDispose ()
 
   m_admWrapper = 0;
   m_appWrapper = 0;
+  m_drpWrapper = 0;
   Object::DoDispose ();
 }
 
@@ -126,6 +128,7 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
   std::string prefix = stringValue.Get ();
   SetAttribute ("AdmStatsFilename", StringValue (prefix + m_admFilename));
   SetAttribute ("AppStatsFilename", StringValue (prefix + m_appFilename));
+  SetAttribute ("DrpStatsFilename", StringValue (prefix + m_drpFilename));
 
   // Create the output file for admission stats.
   m_admWrapper = Create<OutputStreamWrapper> (m_admFilename + ".log", std::ios::out);
@@ -154,7 +157,20 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
   AppStatsCalculator::PrintHeader (*m_appWrapper->GetStream ());
   *m_appWrapper->GetStream () << std::endl;
 
+  // Create the output file for drop stats.
+  m_drpWrapper = Create<OutputStreamWrapper> (m_drpFilename + ".log", std::ios::out);
+
+  // Print the header in output file.
+  *m_drpWrapper->GetStream ()
+    << boolalpha << right << fixed << setprecision (3)
+    << " " << setw (8)  << "Time:s"
+    << " " << setw (6)  << "Load"
+    << " " << setw (6)  << "Meter"
+    << " " << setw (6)  << "Queue"
+    << std::endl;
+
   Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpAdmission, this);
+  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpDrop, this);
 
   Object::NotifyConstructionCompleted ();
 }
@@ -182,7 +198,27 @@ TrafficStatsCalculator::DumpAdmission ()
 }
 
 void
-TrafficStatsCalculator::DumpTraffic (std::string context, Ptr<SvelteClient> app)
+TrafficStatsCalculator::DumpDrop ()
+{
+  NS_LOG_FUNCTION (this);
+
+  *m_drpWrapper->GetStream ()
+    << " " << setw (8) << Simulator::Now ().GetSeconds ()
+    << " " << setw (6) << m_drpStats.load
+    << " " << setw (6) << m_drpStats.meter
+    << " " << setw (6) << m_drpStats.queue
+    << std::endl;
+
+  m_drpStats.load = 0;
+  m_drpStats.meter = 0;
+  m_drpStats.queue = 0;
+
+  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpDrop, this);
+}
+
+void
+TrafficStatsCalculator::DumpTraffic (
+  std::string context, Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
 
@@ -213,7 +249,8 @@ TrafficStatsCalculator::DumpTraffic (std::string context, Ptr<SvelteClient> app)
 }
 
 void
-TrafficStatsCalculator::NotifyRequest (uint32_t teid, bool accepted)
+TrafficStatsCalculator::NotifyRequest (
+  std::string context, uint32_t teid, bool accepted)
 {
   m_admStats.requests++;
   if (accepted)
@@ -228,58 +265,20 @@ TrafficStatsCalculator::NotifyRequest (uint32_t teid, bool accepted)
 }
 
 void
-TrafficStatsCalculator::NotifyRelease (uint32_t teid)
+TrafficStatsCalculator::NotifyRelease (
+  std::string context, uint32_t teid)
 {
   m_admStats.releases++;
   m_admStats.activeBearers--;
 }
 
-
-
-/*
 void
-TrafficStatsCalculator::ResetCounters (std::string context,
-                                       Ptr<SvelteClient> app)
-{
-  NS_LOG_FUNCTION (this << context << app);
-
-}
-
-void
-TrafficStatsCalculator::OverloadDropPacket (std::string context,
-                                            Ptr<const Packet> packet)
+TrafficStatsCalculator::OverloadDropPacket (
+  std::string context, Ptr<const Packet> packet)
 {
   NS_LOG_FUNCTION (this << context << packet);
 
-  EpcGtpuTag gtpuTag;
-  Ptr<EpcStatsCalculator> epcStats;
-  if (packet->PeekPacketTag (gtpuTag))
-    {
-      epcStats = GetEpcStats (gtpuTag.GetTeid (), GetDirection (gtpuTag));
-      epcStats->NotifyDrop (packet->GetSize (), EpcStatsCalculator::PLOAD);
-    }
-  else
-    {
-      //
-      // This only happens when a packet is dropped at the P-GW, before
-      // entering the logical port that is responsible for attaching the
-      // EpcGtpuTag and notifying that the packet is entering the EPC. To keep
-      // consistent log results, we are doing this manually here.
-      //
-      EthernetHeader ethHeader;
-      Ipv4Header ipv4Header;
-
-      Ptr<Packet> packetCopy = packet->Copy ();
-      packetCopy->RemoveHeader (ethHeader);
-      packetCopy->PeekHeader (ipv4Header);
-
-      Ptr<UeInfo> ueInfo = UeInfo::GetPointer (ipv4Header.GetDestination ());
-      uint32_t teid = ueInfo->Classify (packetCopy);
-
-      epcStats = GetEpcStats (teid, Direction::DLINK);
-      epcStats->NotifyTx (packetCopy->GetSize ());
-      epcStats->NotifyDrop (packetCopy->GetSize (), EpcStatsCalculator::PLOAD);
-    }
+  m_drpStats.load++;
 }
 
 void
@@ -288,57 +287,16 @@ TrafficStatsCalculator::MeterDropPacket (
 {
   NS_LOG_FUNCTION (this << context << packet << meterId);
 
-  uint32_t teid;
-  EpcGtpuTag gtpuTag;
-  Ptr<EpcStatsCalculator> epcStats;
-  if (packet->PeekPacketTag (gtpuTag))
-    {
-      teid = gtpuTag.GetTeid ();
-      epcStats = GetEpcStats (teid, GetDirection (gtpuTag));
-
-      // Notify the droped packet, based on meter type (traffic or slicing).
-      if (teid == meterId)
-        {
-          epcStats->NotifyDrop (packet->GetSize (), EpcStatsCalculator::METER);
-        }
-      else
-        {
-          epcStats->NotifyDrop (packet->GetSize (), EpcStatsCalculator::SLICE);
-        }
-    }
-  else
-    {
-      //
-      // This only happens when a packet is dropped at the P-GW, before
-      // entering the logical port that is responsible for attaching the
-      // EpcGtpuTag and notifying that the packet is entering the EPC.
-      // To keep consistent log results, we are doing this manually here.
-      //
-      teid = meterId;
-      epcStats = GetEpcStats (teid, Direction::DLINK);
-      epcStats->NotifyTx (packet->GetSize ());
-
-      // Notify the droped packet (it must be a traffic meter because we only
-      // have slicing meters on ring switches, not on the P-GW).
-      epcStats->NotifyDrop (packet->GetSize (), EpcStatsCalculator::METER);
-    }
+  m_drpStats.meter++; 
 }
 
 void
-TrafficStatsCalculator::QueueDropPacket (std::string context,
-                                         Ptr<const Packet> packet)
+TrafficStatsCalculator::QueueDropPacket (
+  std::string context, Ptr<const Packet> packet)
 {
   NS_LOG_FUNCTION (this << context << packet);
 
-  EpcGtpuTag gtpuTag;
-  Ptr<EpcStatsCalculator> epcStats;
-  if (packet->PeekPacketTag (gtpuTag))
-    {
-      epcStats = GetEpcStats (gtpuTag.GetTeid (), GetDirection (gtpuTag));
-      epcStats->NotifyDrop (packet->GetSize (), EpcStatsCalculator::QUEUE);
-    }
+  m_drpStats.queue++; 
 }
-
-*/
 
 } // Namespace ns3
