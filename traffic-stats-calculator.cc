@@ -20,6 +20,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <string>
 #include "traffic-stats-calculator.h"
 #include "applications/svelte-client.h"
 
@@ -34,7 +35,16 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
 {
   NS_LOG_FUNCTION (this);
 
+  // Clear adm stats.
+  memset (&m_admStats, 0, sizeof (AdmStats));
+
   // Connect this stats calculator to required trace sources.
+  Config::ConnectWithoutContext (
+    "/NodeList/*/ApplicationList/*/$ns3::CustomController/Request",
+    MakeCallback (&TrafficStatsCalculator::NotifyRequest, this));
+  Config::ConnectWithoutContext (
+    "/NodeList/*/ApplicationList/*/$ns3::CustomController/Release",
+    MakeCallback (&TrafficStatsCalculator::NotifyRelease, this));
 
   // Config::Connect (
   //   "/NodeList/*/$ns3::OFSwitch13Device/LoadDrop",//FIXME overload
@@ -51,10 +61,10 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
 
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStop",
-    MakeCallback (&TrafficStatsCalculator::DumpStatistics, this));
+    MakeCallback (&TrafficStatsCalculator::DumpTraffic, this));
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppError",
-    MakeCallback (&TrafficStatsCalculator::DumpStatistics, this));
+    MakeCallback (&TrafficStatsCalculator::DumpTraffic, this));
 }
 
 TrafficStatsCalculator::~TrafficStatsCalculator ()
@@ -68,12 +78,16 @@ TrafficStatsCalculator::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::TrafficStatsCalculator")
     .SetParent<Object> ()
     .AddConstructor<TrafficStatsCalculator> ()
+    .AddAttribute ("AdmStatsFilename",
+                   "Filename for bearer admission and counter statistics.",
+                   StringValue ("admission-counters"),
+                   MakeStringAccessor (&TrafficStatsCalculator::m_admFilename),
+                   MakeStringChecker ())
     .AddAttribute ("AppStatsFilename",
                    "Filename for L7 traffic application QoS statistics.",
                    StringValue ("traffic-qos-l7-app"),
                    MakeStringAccessor (&TrafficStatsCalculator::m_appFilename),
                    MakeStringChecker ())
-
   ;
   return tid;
 }
@@ -97,6 +111,7 @@ TrafficStatsCalculator::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
 
+  m_admWrapper = 0;
   m_appWrapper = 0;
   Object::DoDispose ();
 }
@@ -109,11 +124,25 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
   StringValue stringValue;
   GlobalValue::GetValueByName ("OutputPrefix", stringValue);
   std::string prefix = stringValue.Get ();
+  SetAttribute ("AdmStatsFilename", StringValue (prefix + m_admFilename));
   SetAttribute ("AppStatsFilename", StringValue (prefix + m_appFilename));
 
+  // Create the output file for admission stats.
+  m_admWrapper = Create<OutputStreamWrapper> (m_admFilename + ".log", std::ios::out);
+
+  // Print the header in output file.
+  *m_admWrapper->GetStream ()
+    << boolalpha << right << fixed << setprecision (3)
+    << " " << setw (8) << "Time:s"
+    << " " << setw (6) << "Relea"
+    << " " << setw (6) << "Reque"
+    << " " << setw (6) << "Accep"
+    << " " << setw (6) << "Block"
+    << " " << setw (6) << "#Actv"
+    << std::endl;
+
   // Create the output file for application stats.
-  m_appWrapper = Create<OutputStreamWrapper> (
-      m_appFilename + ".log", std::ios::out);
+  m_appWrapper = Create<OutputStreamWrapper> (m_appFilename + ".log", std::ios::out);
 
   // Print the header in output file.
   *m_appWrapper->GetStream ()
@@ -122,15 +151,38 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
     << " " << setw (11) << "Teid"
     << " " << setw (8)  << "AppName"
     << " " << setw (6)  << "Ul/Dl";
-
   AppStatsCalculator::PrintHeader (*m_appWrapper->GetStream ());
   *m_appWrapper->GetStream () << std::endl;
+
+  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpAdmission, this);
 
   Object::NotifyConstructionCompleted ();
 }
 
 void
-TrafficStatsCalculator::DumpStatistics (std::string context, Ptr<SvelteClient> app)
+TrafficStatsCalculator::DumpAdmission ()
+{
+  NS_LOG_FUNCTION (this);
+
+  *m_admWrapper->GetStream ()
+    << " " << setw (8) << Simulator::Now ().GetSeconds ()
+    << " " << setw (6) << m_admStats.releases
+    << " " << setw (6) << m_admStats.requests
+    << " " << setw (6) << m_admStats.accepted
+    << " " << setw (6) << m_admStats.blocked
+    << " " << setw (6) << m_admStats.activeBearers
+    << std::endl;
+
+  m_admStats.releases = 0;
+  m_admStats.requests = 0;
+  m_admStats.accepted = 0;
+  m_admStats.blocked = 0;
+
+  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpAdmission, this);
+}
+
+void
+TrafficStatsCalculator::DumpTraffic (std::string context, Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
 
@@ -158,8 +210,32 @@ TrafficStatsCalculator::DumpStatistics (std::string context, Ptr<SvelteClient> a
     << " " << setw (6)  << DirectionStr (Direction::DLINK)
     << *app->GetAppStats ()
     << std::endl;
-
 }
+
+void
+TrafficStatsCalculator::NotifyRequest (uint32_t teid, bool accepted)
+{
+  m_admStats.requests++;
+  if (accepted)
+    {
+      m_admStats.accepted++;
+      m_admStats.activeBearers++;
+    }
+  else
+    {
+      m_admStats.blocked++;
+    }
+}
+
+void
+TrafficStatsCalculator::NotifyRelease (uint32_t teid)
+{
+  m_admStats.releases++;
+  m_admStats.activeBearers--;
+}
+
+
+
 /*
 void
 TrafficStatsCalculator::ResetCounters (std::string context,

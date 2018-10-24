@@ -35,24 +35,6 @@ using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("Main");
 
-// FIXME Levar pra algum stats calculator.
-uint16_t aceitos = 0, bloqueados = 0;
-void
-RequestCounter (uint32_t teid, bool accepted)
-{
-  //contar quantos aceitos e quantos bloqueados e imprimir no fim da simulacao
-  if (accepted)
-    {
-      cout << "Aceito, teid: " << teid << endl;
-      aceitos++;
-    }
-  else
-    {
-      cout << "Bloqueado" << endl;
-      bloqueados++;
-    }
-}
-
 // Prefixes used by input and output filenames.
 static ns3::GlobalValue
   g_inputPrefix ("InputPrefix", "Common prefix for output filenames.",
@@ -63,12 +45,6 @@ static ns3::GlobalValue
   g_outputPrefix ("OutputPrefix", "Common prefix for input filenames.",
                   ns3::StringValue (""),
                   ns3::MakeStringChecker ());
-
-// Dump timeout for logging statistics.
-static ns3::GlobalValue
-  g_dumpTimeout ("DumpStatsTimeout", "Periodic statistics dump interval.",
-                 ns3::TimeValue (Seconds (1)),
-                 ns3::MakeTimeChecker ());
 
 // Number of client hosts in the simulation.
 static ns3::GlobalValue
@@ -275,9 +251,6 @@ main (int argc, char *argv[])
 
   // Configure the stats calculator.
   Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
-  // Config::ConnectWithoutContext (
-  //   "/NodeList/*/ApplicationList/*/$ns3::CustomController/Request",
-  //   MakeCallback (&RequestCounter));
 
   // Always enable datapath stats.
   StringValue stringValue;
@@ -310,10 +283,6 @@ main (int argc, char *argv[])
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
   Simulator::Destroy ();
-
-  // FIXME Mover para um stats calculator.
-  cout << "Aceitos: " << aceitos << endl;
-  cout << "Bloqueados: " << bloqueados << endl;
 }
 
 void ForceDefaults ()

@@ -71,13 +71,41 @@ protected:
   virtual void NotifyConstructionCompleted (void);
 
 private:
+  /** Metadata associated to admission. */
+  struct AdmStats
+  {
+    uint32_t releases;      //!< Number of releases.
+    uint32_t requests;      //!< Number of requests.
+    uint32_t accepted;      //!< Number of requests accepted.
+    uint32_t blocked;       //!< Number of requests blocked.
+    uint32_t activeBearers; //!< Number of active bearers.
+  };
+
   /**
-   * Dump statistics into file.
+   * Dump admission statistics into file.
+   */
+  void DumpAdmission ();
+
+  /**
+   * Dump traffic statistics into file.
    * Trace sink fired when application traffic stops.
    * \param context Context information.
    * \param app The client application.
    */
-  void DumpStatistics (std::string context, Ptr<SvelteClient> app);
+  void DumpTraffic (std::string context, Ptr<SvelteClient> app);
+
+  /**
+   * Notify a new traffic request.
+   * \param teid The traffic TEID.
+   * \param accepted The request status.
+   */
+  void NotifyRequest (uint32_t teid, bool accepted);
+
+  /**
+   * Notify a traffic release.
+   * \param teid The traffic TEID.
+   */
+  void NotifyRelease (uint32_t teid);
 
   /**
    * Reset internal counters.
@@ -111,9 +139,13 @@ private:
    */
 //  void QueueDropPacket (std::string context, Ptr<const Packet> packet);
 
+  AdmStats                  m_admStats;     //!< Admission stats.
+
+  std::string               m_admFilename;  //!< AdmStats filename.
+  Ptr<OutputStreamWrapper>  m_admWrapper;   //!< AdmStats file wrapper.
+
   std::string               m_appFilename;  //!< AppStats filename.
   Ptr<OutputStreamWrapper>  m_appWrapper;   //!< AppStats file wrapper.
-
 };
 
 } // namespace ns3
