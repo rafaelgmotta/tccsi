@@ -28,7 +28,7 @@
 #include "custom-controller.h"
 #include "traffic-manager.h"
 #include "traffic-helper.h"
-#include "traffic-stats-calculator.h"
+#include "traffic-statistics.h"
 
 using namespace ns3;
 using namespace std;
@@ -247,10 +247,11 @@ main (int argc, char *argv[])
   controllerApp->NotifyTopologyBuilt ();
 
   // Configure the traffic helper.
-  Ptr<TrafficHelper> trafficHelper = CreateObject<TrafficHelper> (controllerApp, serverNode, clientNodes);
+  Ptr<TrafficHelper> trafficHelper =
+    CreateObject<TrafficHelper> (controllerApp, serverNode, clientNodes);
 
   // Configure the stats calculator.
-  Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
+  Ptr<TrafficStatistics> stats = CreateObject<TrafficStatistics> ();
 
   // Always enable datapath stats.
   StringValue stringValue;
@@ -383,7 +384,7 @@ EnableVerbose (bool enable)
       LogComponentEnable ("CustomController",         logLevelAll);
       LogComponentEnable ("TrafficHelper",            logLevelAll);
       LogComponentEnable ("TrafficManager",           logLevelAll);
-      LogComponentEnable ("TrafficStatsCalculator",   logLevelAll);
+      LogComponentEnable ("TrafficStatistics",        logLevelAll);
 
       // Applications.
       LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);

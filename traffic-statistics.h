@@ -36,7 +36,7 @@ class SvelteClient;
  * end-to-end traffic, and also at L2 OpenFlow link level for traffic within
  * the LTE EPC.
  */
-class TrafficStatsCalculator : public Object
+class TrafficStatistics : public Object
 {
 public:
   /** Traffic direction. */
@@ -46,8 +46,8 @@ public:
     ULINK = 1   //!< Uplink traffic.
   };
 
-  TrafficStatsCalculator ();          //!< Default constructor.
-  virtual ~TrafficStatsCalculator (); //!< Dummy destructor, see DoDispose.
+  TrafficStatistics ();          //!< Default constructor.
+  virtual ~TrafficStatistics (); //!< Dummy destructor, see DoDispose.
 
   /**
    * Register this type.

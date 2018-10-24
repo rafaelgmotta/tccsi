@@ -21,17 +21,17 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include "traffic-stats-calculator.h"
+#include "traffic-statistics.h"
 #include "applications/svelte-client.h"
 
 using namespace std;
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("TrafficStatsCalculator");
-NS_OBJECT_ENSURE_REGISTERED (TrafficStatsCalculator);
+NS_LOG_COMPONENT_DEFINE ("TrafficStatistics");
+NS_OBJECT_ENSURE_REGISTERED (TrafficStatistics);
 
-TrafficStatsCalculator::TrafficStatsCalculator ()
+TrafficStatistics::TrafficStatistics ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -42,65 +42,65 @@ TrafficStatsCalculator::TrafficStatsCalculator ()
   // Connect this stats calculator to required trace sources.
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::CustomController/Request",
-    MakeCallback (&TrafficStatsCalculator::NotifyRequest, this));
+    MakeCallback (&TrafficStatistics::NotifyRequest, this));
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::CustomController/Release",
-    MakeCallback (&TrafficStatsCalculator::NotifyRelease, this));
+    MakeCallback (&TrafficStatistics::NotifyRelease, this));
   Config::Connect (
     "/NodeList/*/$ns3::OFSwitch13Device/OverloadDrop",
-    MakeCallback (&TrafficStatsCalculator::OverloadDropPacket, this));
+    MakeCallback (&TrafficStatistics::OverloadDropPacket, this));
   Config::Connect (
     "/NodeList/*/$ns3::OFSwitch13Device/MeterDrop",
-    MakeCallback (&TrafficStatsCalculator::MeterDropPacket, this));
+    MakeCallback (&TrafficStatistics::MeterDropPacket, this));
   Config::Connect (
     "/NodeList/*/$ns3::OFSwitch13Device/PortList/*/PortQueue/Drop",
-    MakeCallback (&TrafficStatsCalculator::QueueDropPacket, this));
+    MakeCallback (&TrafficStatistics::QueueDropPacket, this));
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppStop",
-    MakeCallback (&TrafficStatsCalculator::DumpTraffic, this));
+    MakeCallback (&TrafficStatistics::DumpTraffic, this));
   Config::Connect (
     "/NodeList/*/ApplicationList/*/$ns3::SvelteClient/AppError",
-    MakeCallback (&TrafficStatsCalculator::DumpTraffic, this));
+    MakeCallback (&TrafficStatistics::DumpTraffic, this));
 }
 
-TrafficStatsCalculator::~TrafficStatsCalculator ()
+TrafficStatistics::~TrafficStatistics ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 TypeId
-TrafficStatsCalculator::GetTypeId (void)
+TrafficStatistics::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::TrafficStatsCalculator")
+  static TypeId tid = TypeId ("ns3::TrafficStatistics")
     .SetParent<Object> ()
-    .AddConstructor<TrafficStatsCalculator> ()
+    .AddConstructor<TrafficStatistics> ()
     .AddAttribute ("AdmStatsFilename",
                    "Filename for bearer admission and counter statistics.",
                    StringValue ("admission-counters"),
-                   MakeStringAccessor (&TrafficStatsCalculator::m_admFilename),
+                   MakeStringAccessor (&TrafficStatistics::m_admFilename),
                    MakeStringChecker ())
     .AddAttribute ("AppStatsFilename",
                    "Filename for L7 traffic application QoS statistics.",
                    StringValue ("traffic-qos-l7-app"),
-                   MakeStringAccessor (&TrafficStatsCalculator::m_appFilename),
+                   MakeStringAccessor (&TrafficStatistics::m_appFilename),
                    MakeStringChecker ())
     .AddAttribute ("DrpStatsFilename",
                    "Filename packet drop statistics.",
                    StringValue ("packet-drops"),
-                   MakeStringAccessor (&TrafficStatsCalculator::m_drpFilename),
+                   MakeStringAccessor (&TrafficStatistics::m_drpFilename),
                    MakeStringChecker ())
   ;
   return tid;
 }
 
 std::string
-TrafficStatsCalculator::DirectionStr (Direction dir)
+TrafficStatistics::DirectionStr (Direction dir)
 {
   switch (dir)
     {
-    case TrafficStatsCalculator::DLINK:
+    case TrafficStatistics::DLINK:
       return "Dlink";
-    case TrafficStatsCalculator::ULINK:
+    case TrafficStatistics::ULINK:
       return "Ulink";
     default:
       return "-";
@@ -108,7 +108,7 @@ TrafficStatsCalculator::DirectionStr (Direction dir)
 }
 
 void
-TrafficStatsCalculator::DoDispose ()
+TrafficStatistics::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -119,7 +119,7 @@ TrafficStatsCalculator::DoDispose ()
 }
 
 void
-TrafficStatsCalculator::NotifyConstructionCompleted (void)
+TrafficStatistics::NotifyConstructionCompleted (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -169,14 +169,14 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
     << " " << setw (6)  << "Queue"
     << std::endl;
 
-  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpAdmission, this);
-  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpDrop, this);
+  Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpAdmission, this);
+  Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpDrop, this);
 
   Object::NotifyConstructionCompleted ();
 }
 
 void
-TrafficStatsCalculator::DumpAdmission ()
+TrafficStatistics::DumpAdmission ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -194,11 +194,11 @@ TrafficStatsCalculator::DumpAdmission ()
   m_admStats.accepted = 0;
   m_admStats.blocked = 0;
 
-  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpAdmission, this);
+  Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpAdmission, this);
 }
 
 void
-TrafficStatsCalculator::DumpDrop ()
+TrafficStatistics::DumpDrop ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -213,11 +213,11 @@ TrafficStatsCalculator::DumpDrop ()
   m_drpStats.meter = 0;
   m_drpStats.queue = 0;
 
-  Simulator::Schedule (Seconds (1), &TrafficStatsCalculator::DumpDrop, this);
+  Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpDrop, this);
 }
 
 void
-TrafficStatsCalculator::DumpTraffic (
+TrafficStatistics::DumpTraffic (
   std::string context, Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
@@ -249,7 +249,7 @@ TrafficStatsCalculator::DumpTraffic (
 }
 
 void
-TrafficStatsCalculator::NotifyRequest (
+TrafficStatistics::NotifyRequest (
   std::string context, uint32_t teid, bool accepted)
 {
   m_admStats.requests++;
@@ -265,7 +265,7 @@ TrafficStatsCalculator::NotifyRequest (
 }
 
 void
-TrafficStatsCalculator::NotifyRelease (
+TrafficStatistics::NotifyRelease (
   std::string context, uint32_t teid)
 {
   m_admStats.releases++;
@@ -273,7 +273,7 @@ TrafficStatsCalculator::NotifyRelease (
 }
 
 void
-TrafficStatsCalculator::OverloadDropPacket (
+TrafficStatistics::OverloadDropPacket (
   std::string context, Ptr<const Packet> packet)
 {
   NS_LOG_FUNCTION (this << context << packet);
@@ -282,21 +282,21 @@ TrafficStatsCalculator::OverloadDropPacket (
 }
 
 void
-TrafficStatsCalculator::MeterDropPacket (
+TrafficStatistics::MeterDropPacket (
   std::string context, Ptr<const Packet> packet, uint32_t meterId)
 {
   NS_LOG_FUNCTION (this << context << packet << meterId);
 
-  m_drpStats.meter++; 
+  m_drpStats.meter++;
 }
 
 void
-TrafficStatsCalculator::QueueDropPacket (
+TrafficStatistics::QueueDropPacket (
   std::string context, Ptr<const Packet> packet)
 {
   NS_LOG_FUNCTION (this << context << packet);
 
-  m_drpStats.queue++; 
+  m_drpStats.queue++;
 }
 
 } // Namespace ns3
