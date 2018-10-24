@@ -91,13 +91,7 @@ TrafficStatsCalculator::DirectionStr (Direction dir)
       return "-";
     }
 }
-/*
-TrafficStatsCalculator::Direction
-TrafficStatsCalculator::GetDirection (EpcGtpuTag &gtpuTag)
-{
-  return gtpuTag.IsDownlink () ? Direction::DLINK : Direction::ULINK;
-}
-*/
+
 void
 TrafficStatsCalculator::DoDispose ()
 {
@@ -112,6 +106,11 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
 {
   NS_LOG_FUNCTION (this);
 
+  StringValue stringValue;
+  GlobalValue::GetValueByName ("OutputPrefix", stringValue);
+  std::string prefix = stringValue.Get ();
+  SetAttribute ("AppStatsFilename", StringValue (prefix + m_appFilename));
+
   // Create the output file for application stats.
   m_appWrapper = Create<OutputStreamWrapper> (
       m_appFilename + ".log", std::ios::out);
@@ -119,10 +118,10 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
   // Print the header in output file.
   *m_appWrapper->GetStream ()
     << boolalpha << right << fixed << setprecision (3)
-    << " " << setw (8) << "Time:s"
+    << " " << setw (8)  << "Time:s"
     << " " << setw (11) << "Teid"
-    << " " << setw (8) << "AppName"
-    << " " << setw (6) << "Ul/Dl";
+    << " " << setw (8)  << "AppName"
+    << " " << setw (6)  << "Ul/Dl";
 
   AppStatsCalculator::PrintHeader (*m_appWrapper->GetStream ());
   *m_appWrapper->GetStream () << std::endl;
@@ -131,8 +130,7 @@ TrafficStatsCalculator::NotifyConstructionCompleted (void)
 }
 
 void
-TrafficStatsCalculator::DumpStatistics (std::string context,
-                                        Ptr<SvelteClient> app)
+TrafficStatsCalculator::DumpStatistics (std::string context, Ptr<SvelteClient> app)
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
 
@@ -140,25 +138,24 @@ TrafficStatsCalculator::DumpStatistics (std::string context,
   char teidStr[11];
   sprintf (teidStr,"0x%08x",teid);
 
-  if (app->GetAppName () != "LiveVid")
+  if (app->GetAppName () != "LivVideo")
     {
       // Dump uplink statistics.
       *m_appWrapper->GetStream ()
-        << " " << setw (8) << Simulator::Now ().GetSeconds ()
+        << " " << setw (8)  << Simulator::Now ().GetSeconds ()
         << " " << setw (11) << std::string (teidStr)
-        << " " << setw (8) << app->GetAppName ()
-        << " " << setw (6) << DirectionStr (Direction::ULINK)
+        << " " << setw (8)  << app->GetAppName ()
+        << " " << setw (6)  << DirectionStr (Direction::ULINK)
         << *app->GetServerAppStats ()
         << std::endl;
     }
 
   // Dump downlink statistics.
-
   *m_appWrapper->GetStream ()
-    << " " << setw (8) << Simulator::Now ().GetSeconds ()
-    << " " << setw (11) <<  std::string (teidStr)
-    << " " << setw (8) << app->GetAppName ()
-    << " " << setw (6) << DirectionStr (Direction::DLINK)
+    << " " << setw (8)  << Simulator::Now ().GetSeconds ()
+    << " " << setw (11) << std::string (teidStr)
+    << " " << setw (8)  << app->GetAppName ()
+    << " " << setw (6)  << DirectionStr (Direction::DLINK)
     << *app->GetAppStats ()
     << std::endl;
 

@@ -54,7 +54,7 @@ CustomController::GetTypeId (void)
                    MakeDoubleAccessor (&CustomController::m_blockThs),
                    MakeDoubleChecker<double> (0.8, 1.0))
     .AddAttribute ("BlockPolicy",
-                   "Switch overloaded block policy. (true aceita, false bloqueia)",
+                   "Switch overloaded block policy (true for block).",
                    BooleanValue (true),
                    MakeBooleanAccessor (&CustomController::m_blockPol),
                    MakeBooleanChecker ())
@@ -74,81 +74,65 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
-  Ptr<Node> node = app->GetNode ();
-  Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
-  Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
-
-
-  uint32_t bit = ipv4addr.Get () & 1;
-
-  Ptr<OFSwitch13Device> switchDevice;
-
+  // Estamos considerand os valores manualmente adicionados ao TEID para
+  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
+  bool ehTcp = (app->GetTeid () & 0xF) <= 3;
   uint16_t port = app->GetTeid () + 10000;
 
-  bool tcp = (app->GetTeid () & 0xF) <= 2;
+  // Na política atual o IP do cliente é utilizado para definir o switch.
+  // IPs pares são enviados para o HW e IP ímpares para o SW.
+  Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
+  Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
+  uint32_t ipImpar = ipv4addr.Get () & 1;
+  Ptr<OFSwitch13Device> switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
 
-  if (!bit)
-    {
-      switchDevice = switchDeviceHw;
-    }
-  else
-    {
-      switchDevice = switchDeviceSw;
-    }
-
+  // String representando o TEID em hexadecimal.
   uint32_t teid = app->GetTeid ();
   char teidStr[11];
   sprintf (teidStr,"0x%08x",teid);
 
-  //consultar switch e verificar disponibilidade de processamento e espaco
-
-  //switchDevice->GetFlowTableUsage (tableId);
-  //acima do espaco: m_bearerRequestTrace(teid, false);
-  //return false;
-  //acima do processamento: verifica policy
-
-
+  // Verifica os recursos disponíveis no switch (processamento e uso de tablas)
   double usage = switchDevice->GetFlowTableUsage (0);
+  double processing = switchDevice->GetProcessingUsage ();
 
+  // Se uso de tabela excede o limiar de bloqueio, então bloqueia o tráfego.
   if (usage > usageLimit)
     {
       m_requestTrace (teid, false);
       return false;
     }
 
-  double processing = switchDevice->GetProcessingUsage ();
-
-  if (processing > processingLimit)
+  // Se udo de processamento excede o limiar de bloquei, a decisão do bloqueio
+  // se baseia no atributo de política de bloqueio.
+  if (m_blockPol && processing > processingLimit)
     {
-      m_requestTrace (teid, m_blockPol);
-      return m_blockPol;
+      m_requestTrace (teid, false);
+      return false;
     }
 
-
-  //app tcps nao passam, verificar regras
-
+  // Se o tráfego não foi bloqueado, então vamos instalar as regras de
+  // encaminhamento no switch SW ou HW.
   std::ostringstream cmdUl, cmdDl;
-
   cmdUl << "flow-mod cmd=add,prio=64,table=0,cookie=" << teidStr
         << " eth_type=0x800,ip_src=" << ipv4addr;
   cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << teidStr
         << " eth_type=0x800,ip_dst=" << ipv4addr;
-  if (tcp)
+  if (ehTcp)
     {
+      // Regras específicas para protocolo TCP
       cmdUl << ",ip_proto=6,tcp_dst=" << port;
       cmdDl << ",ip_proto=6,tcp_src=" << port;
     }
   else
     {
+      // Regras específicas para protocolo UDP
       cmdUl << ",ip_proto=17,udp_dst=" << port;
       cmdDl << ",ip_proto=17,udp_src=" << port;
     }
-
   cmdUl << " write:group=1";
   cmdDl << " write:group=2";
-
-  DpctlExecute (switchDevice->GetDatapathId (),cmdUl.str ());
-  DpctlExecute (switchDevice->GetDatapathId (),cmdDl.str ());
+  DpctlExecute (switchDevice->GetDatapathId (), cmdUl.str ());
+  DpctlExecute (switchDevice->GetDatapathId (), cmdDl.str ());
 
   m_requestTrace (teid, true);
   return true;
@@ -159,27 +143,19 @@ CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
+  // String representando o TEID em hexadecimal.
   uint32_t teid = app->GetTeid ();
   char teidStr[11];
   sprintf (teidStr,"0x%08x",teid);
 
-  Ptr<Node> node = app->GetNode ();
-  Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+  // Na política atual o IP do cliente é utilizado para definir o switch.
+  // IPs pares são enviados para o HW e IP ímpares para o SW.
+  Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
+  uint32_t ipImpar = ipv4addr.Get () & 1;
+  Ptr<OFSwitch13Device> switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
 
-  uint32_t bit = ipv4addr.Get () & 1;
-
-  Ptr<OFSwitch13Device> switchDevice;
-
-  if (!bit)
-    {
-      switchDevice = switchDeviceHw;
-    }
-  else
-    {
-      switchDevice = switchDeviceSw;
-    }
-
+  // Remover todas as regras identificadas pelo cookie com o TEID do tráfego.
   std::ostringstream cmd;
   cmd << "flow-mod cmd=del"
       << ",cookie="       << teidStr
@@ -189,9 +165,6 @@ CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
   m_releaseTrace (teid);
   return true;
 }
-
-
-
 
 void
 CustomController::NotifyHwSwitch (Ptr<OFSwitch13Device> switchDevice,
@@ -361,6 +334,7 @@ CustomController::NotifyDl2Sv (uint32_t portNo, Ipv4Address ipAddr)
   cmd << "flow-mod cmd=add,prio=64,table=2"
       << " eth_type=0x800,ip_dst=" << ipAddr
       << " apply:output=" << portNo;
+  DpctlSchedule (switchDeviceDl->GetDatapathId (), cmd.str ());
 }
 
 void
@@ -373,6 +347,7 @@ CustomController::NotifyUl2Cl (uint32_t portNo, Ipv4Address ipAddr)
   cmd << "flow-mod cmd=add,prio=64,table=2"
       << " eth_type=0x800,ip_dst=" << ipAddr
       << " apply:output=" << portNo;
+  DpctlSchedule (switchDeviceUl->GetDatapathId (), cmd.str ());
 }
 
 void

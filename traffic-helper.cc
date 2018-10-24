@@ -474,7 +474,7 @@ TrafficHelper::ConfigureApplications ()
             "TraceFilename", StringValue (GetVideoFilename (videoIdx)));
           InstallAppDefault (m_bufVideoHelper, ueImsi + 1);
         }
-      
+
       // HTTP webpage traffic
       if (m_nonHttpPage)
         {
@@ -572,7 +572,7 @@ TrafficHelper::InstallAppDefault (ApplicationHelper& helper, uint32_t teid)
   NS_LOG_FUNCTION (this);
 
   // Create and install the applications.
-  uint16_t port = 1000 + teid;
+  uint16_t port = 10000 + teid;
   Ptr<SvelteClient> app = helper.Install (m_ueNode, m_webNode, m_ueAddr, m_webAddr, port);
   app->SetTeid (teid);
   m_ueManager->AddSvelteClient (app);

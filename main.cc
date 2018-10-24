@@ -270,72 +270,14 @@ main (int argc, char *argv[])
   of13Helper->CreateOpenFlowChannels ();
   controllerApp->NotifyTopologyBuilt ();
 
-  // Configuring traffic helper.
+  // Configure the traffic helper.
   Ptr<TrafficHelper> trafficHelper = CreateObject<TrafficHelper> (controllerApp, serverNode, clientNodes);
 
-//   SvelteAppHelper autoPilotHelper (AutoPilotClient::GetTypeId (),AutoPilotServer::GetTypeId ());
-//   SvelteAppHelper bufferedVideoHelper (BufferedVideoClient::GetTypeId (),BufferedVideoServer::GetTypeId ());
-//   SvelteAppHelper httpHelper (HttpClient::GetTypeId (),HttpServer::GetTypeId ());
-//   SvelteAppHelper liveVideoHelper (LiveVideoClient::GetTypeId (),LiveVideoServer::GetTypeId ());
-//   SvelteAppHelper voipHelper (VoipClient::GetTypeId (),VoipServer::GetTypeId ());
-
-//   ObjectFactory managerFactory;
-//   managerFactory.SetTypeId (TrafficManager::GetTypeId ());
-
-//   for (uint32_t i = 0; i < clientDevices.GetN (); i++)
-//     {
-//       Ptr<Node> clientNode = clientNodes.Get (i);
-//       Ptr<TrafficManager> manager = managerFactory.Create<TrafficManager>();
-//       uint64_t imsi = i << 4;
-//       manager->SetImsi (imsi);
-//       manager->SetController (controllerApp);
-//       clientNode->AggregateObject (manager);
-// //tcp
-//       //bufferedVideo
-//       Ptr<SvelteClient> appBufferedVideo = bufferedVideoHelper.Install (clientNode, serverNodes.Get (i),
-//                                                                            clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 1);
-//       appBufferedVideo->SetEpsBearer (EpsBearer (EpsBearer::NGBR_VIDEO_TCP_OPERATOR,GbrQosInformation ()));
-//       appBufferedVideo->SetTeid (imsi + 1);
-//       manager->AddSvelteClient (appBufferedVideo);
-
-//       //http
-//       Ptr<SvelteClient> appHttp = httpHelper.Install (clientNode, serverNodes.Get (i),
-//                                                          clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 2);
-//       appHttp->SetEpsBearer (EpsBearer (EpsBearer::NGBR_VIDEO_TCP_PREMIUM,GbrQosInformation ()));
-//       appHttp->SetTeid (imsi + 2);
-//       manager->AddSvelteClient (appHttp);
-// //udp
-//       //autoPilot
-//       Ptr<SvelteClient> appAutoPilot = autoPilotHelper.Install (clientNode, serverNodes.Get (i),
-//                                                                    clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 3);
-//       appAutoPilot->SetEpsBearer (EpsBearer (EpsBearer::GBR_GAMING,GbrQosInformation ()));
-//       appAutoPilot->SetTeid (imsi + 3);
-//       manager->AddSvelteClient (appAutoPilot);
-
-//       //liveVideo //FIXME TraceFilename
-//       Ptr<SvelteClient> appLiveVideo = liveVideoHelper.Install (clientNode, serverNodes.Get (i),
-//                                                                    clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 4);
-//       appLiveVideo->SetEpsBearer (EpsBearer (EpsBearer::GBR_NON_CONV_VIDEO,GbrQosInformation ()));
-//       appLiveVideo->SetTeid (imsi + 4);
-//       manager->AddSvelteClient (appLiveVideo);
-
-//       //voip
-//       Ptr<SvelteClient> appVoip = voipHelper.Install (clientNode, serverNodes.Get (i),
-//                                                          clientIpIfaces.GetAddress (i), serverIpIfaces.GetAddress (i), 10000 + imsi + 5);
-//       appVoip->SetEpsBearer (EpsBearer (EpsBearer::GBR_CONV_VOICE,GbrQosInformation ()));
-//       appVoip->SetTeid (imsi + 5);
-//       manager->AddSvelteClient (appVoip);
-
-//     }
-
-
-
-
-
-//   Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
-//   Config::ConnectWithoutContext (
-//     "/NodeList/*/ApplicationList/*/$ns3::CustomController/BearerRequest",
-//     MakeCallback (&RequestCounter));
+  // Configure the stats calculator.
+  Ptr<TrafficStatsCalculator> stats = CreateObject<TrafficStatsCalculator>();
+  // Config::ConnectWithoutContext (
+  //   "/NodeList/*/ApplicationList/*/$ns3::CustomController/Request",
+  //   MakeCallback (&RequestCounter));
 
   // Always enable datapath stats.
   StringValue stringValue;
