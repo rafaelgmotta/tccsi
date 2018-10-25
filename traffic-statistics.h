@@ -74,19 +74,26 @@ private:
   /** Metadata associated to admission. */
   struct AdmStats
   {
-    uint32_t releases;      //!< Number of releases.
-    uint32_t requests;      //!< Number of requests.
-    uint32_t accepted;      //!< Number of requests accepted.
-    uint32_t blocked;       //!< Number of requests blocked.
-    uint32_t activeBearers; //!< Number of active bearers.
+    uint64_t tempReleases;      //!< Temp number of releases.
+    uint64_t tempRequests;      //!< Temp number of requests.
+    uint64_t tempAccepted;      //!< Temp number of requests accepted.
+    uint64_t tempBlocked;       //!< Temp number of requests blocked.
+    uint64_t activeBearers;     //!< Number of active bearers.
+    uint64_t totalReleases;     //!< Total number of releases.
+    uint64_t totalRequests;     //!< Total number of requests.
+    uint64_t totalAccepted;     //!< Total number of requests accepted.
+    uint64_t totalBlocked;      //!< Total number of requests blocked.
   };
 
   /** Metadata associated to packet drops. */
   struct DropStats
   {
-    uint32_t load;        //!< Number of overload drops.
-    uint32_t meter;       //!< Number of meter drops.
-    uint32_t queue;       //!< Number of queue drops.
+    uint64_t tempLoad;        //!< Temp number of overload drops.
+    uint64_t tempMeter;       //!< Temp number of meter drops.
+    uint64_t tempQueue;       //!< Temp number of queue drops.
+    uint64_t totalLoad;       //!< Total number of overload drops.
+    uint64_t totalMeter;      //!< Total number of meter drops.
+    uint64_t totalQueue;      //!< Total number of queue drops.
   };
 
   /**

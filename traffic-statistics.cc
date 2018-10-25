@@ -137,11 +137,15 @@ TrafficStatistics::NotifyConstructionCompleted (void)
   *m_admWrapper->GetStream ()
     << boolalpha << right << fixed << setprecision (3)
     << " " << setw (8) << "Time:s"
-    << " " << setw (6) << "Relea"
-    << " " << setw (6) << "Reque"
-    << " " << setw (6) << "Accep"
-    << " " << setw (6) << "Block"
-    << " " << setw (6) << "#Actv"
+    << " " << setw (8) << "IReque"
+    << " " << setw (8) << "IAccep"
+    << " " << setw (8) << "IBlock"
+    << " " << setw (8) << "IRelea"
+    << " " << setw (8) << "#Actv"
+    << " " << setw (8) << "TReque"
+    << " " << setw (8) << "TAccep"
+    << " " << setw (8) << "TBlock"
+    << " " << setw (8) << "TRelea"
     << std::endl;
 
   // Create the output file for application stats.
@@ -164,9 +168,12 @@ TrafficStatistics::NotifyConstructionCompleted (void)
   *m_drpWrapper->GetStream ()
     << boolalpha << right << fixed << setprecision (3)
     << " " << setw (8)  << "Time:s"
-    << " " << setw (6)  << "Load"
-    << " " << setw (6)  << "Meter"
-    << " " << setw (6)  << "Queue"
+    << " " << setw (8)  << "ILoad"
+    << " " << setw (8)  << "IMeter"
+    << " " << setw (8)  << "IQueue"
+    << " " << setw (8)  << "TLoad"
+    << " " << setw (8)  << "TMeter"
+    << " " << setw (8)  << "TQueue"
     << std::endl;
 
   Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpAdmission, this);
@@ -182,17 +189,21 @@ TrafficStatistics::DumpAdmission ()
 
   *m_admWrapper->GetStream ()
     << " " << setw (8) << Simulator::Now ().GetSeconds ()
-    << " " << setw (6) << m_admStats.releases
-    << " " << setw (6) << m_admStats.requests
-    << " " << setw (6) << m_admStats.accepted
-    << " " << setw (6) << m_admStats.blocked
-    << " " << setw (6) << m_admStats.activeBearers
+    << " " << setw (8) << m_admStats.tempRequests
+    << " " << setw (8) << m_admStats.tempAccepted
+    << " " << setw (8) << m_admStats.tempBlocked
+    << " " << setw (8) << m_admStats.tempReleases
+    << " " << setw (8) << m_admStats.activeBearers
+    << " " << setw (8) << m_admStats.totalRequests
+    << " " << setw (8) << m_admStats.totalAccepted
+    << " " << setw (8) << m_admStats.totalBlocked
+    << " " << setw (8) << m_admStats.totalReleases
     << std::endl;
 
-  m_admStats.releases = 0;
-  m_admStats.requests = 0;
-  m_admStats.accepted = 0;
-  m_admStats.blocked = 0;
+  m_admStats.tempReleases = 0;
+  m_admStats.tempRequests = 0;
+  m_admStats.tempAccepted = 0;
+  m_admStats.tempBlocked = 0;
 
   Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpAdmission, this);
 }
@@ -204,14 +215,17 @@ TrafficStatistics::DumpDrop ()
 
   *m_drpWrapper->GetStream ()
     << " " << setw (8) << Simulator::Now ().GetSeconds ()
-    << " " << setw (6) << m_drpStats.load
-    << " " << setw (6) << m_drpStats.meter
-    << " " << setw (6) << m_drpStats.queue
+    << " " << setw (8) << m_drpStats.tempLoad
+    << " " << setw (8) << m_drpStats.tempMeter
+    << " " << setw (8) << m_drpStats.tempQueue
+    << " " << setw (8) << m_drpStats.totalLoad
+    << " " << setw (8) << m_drpStats.totalMeter
+    << " " << setw (8) << m_drpStats.totalQueue
     << std::endl;
 
-  m_drpStats.load = 0;
-  m_drpStats.meter = 0;
-  m_drpStats.queue = 0;
+  m_drpStats.tempLoad = 0;
+  m_drpStats.tempMeter = 0;
+  m_drpStats.tempQueue = 0;
 
   Simulator::Schedule (Seconds (1), &TrafficStatistics::DumpDrop, this);
 }
@@ -252,15 +266,18 @@ void
 TrafficStatistics::NotifyRequest (
   std::string context, uint32_t teid, bool accepted)
 {
-  m_admStats.requests++;
+  m_admStats.tempRequests++;
+  m_admStats.totalRequests++;
   if (accepted)
     {
-      m_admStats.accepted++;
+      m_admStats.tempAccepted++;
+      m_admStats.totalAccepted++;
       m_admStats.activeBearers++;
     }
   else
     {
-      m_admStats.blocked++;
+      m_admStats.tempBlocked++;
+      m_admStats.totalBlocked++;
     }
 }
 
@@ -268,7 +285,8 @@ void
 TrafficStatistics::NotifyRelease (
   std::string context, uint32_t teid)
 {
-  m_admStats.releases++;
+  m_admStats.tempReleases++;
+  m_admStats.totalReleases++;
   m_admStats.activeBearers--;
 }
 
@@ -278,7 +296,8 @@ TrafficStatistics::OverloadDropPacket (
 {
   NS_LOG_FUNCTION (this << context << packet);
 
-  m_drpStats.load++;
+  m_drpStats.tempLoad++;
+  m_drpStats.totalLoad++;
 }
 
 void
@@ -287,7 +306,8 @@ TrafficStatistics::MeterDropPacket (
 {
   NS_LOG_FUNCTION (this << context << packet << meterId);
 
-  m_drpStats.meter++;
+  m_drpStats.tempMeter++;
+  m_drpStats.totalMeter++;
 }
 
 void
@@ -296,7 +316,8 @@ TrafficStatistics::QueueDropPacket (
 {
   NS_LOG_FUNCTION (this << context << packet);
 
-  m_drpStats.queue++;
+  m_drpStats.tempQueue++;
+  m_drpStats.totalQueue++;
 }
 
 } // Namespace ns3
