@@ -27,6 +27,12 @@ using namespace std;
 namespace ns3 {
 
 double
+Bps2Kbps (uint64_t bitrate)
+{
+  return static_cast<double> (bitrate) / 1000;
+}
+
+double
 Bps2Kbps (DataRate datarate)
 {
   return Bps2Kbps (datarate.GetBitRate ());
