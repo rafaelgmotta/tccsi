@@ -313,15 +313,6 @@ void ForceDefaults ()
   Config::SetDefault ("ns3::TcpSocket::ConnTimeout", TimeValue (MilliSeconds (500)));
 
   //
-  // The default TCP minimum retransmit timeout value is set to 1 second in
-  // ns-3, according to RFC 6298. However, it takes to long to recover from
-  // lost packets. Linux uses 200 ms as the default value, however, this was
-  // leading to many unnecessary retransmitted packets. We are going to use an
-  // intermediate value.
-  //
-  Config::SetDefault ("ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (500)));
-
-  //
   // Increasing the default MTU for virtual network devices, which are used as
   // OpenFlow virtual port devices.
   //
