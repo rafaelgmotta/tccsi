@@ -28,6 +28,14 @@
 
 namespace ns3 {
 
+std::string
+GetUint32Hex (uint32_t value)
+{
+  char valueStr [11];
+  sprintf (valueStr, "0x%08x", value);
+  return std::string (valueStr);
+}
+
 NS_LOG_COMPONENT_DEFINE ("SvelteClient");
 NS_OBJECT_ENSURE_REGISTERED (SvelteClient);
 
@@ -154,9 +162,7 @@ std::string
 SvelteClient::GetTeidHex (void) const
 {
   // No log to avoid infinite recursion.
-  char valueStr[11];
-  sprintf (valueStr, "0x%08x", m_teid);
-  return std::string (valueStr);
+  return GetUint32Hex (m_teid);
 }
 
 Ptr<SvelteServer>
