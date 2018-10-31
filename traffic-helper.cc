@@ -28,8 +28,8 @@
 #include "applications/svelte-udp-client.h"
 #include "applications/svelte-udp-server.h"
 #include "applications/app-stats-calculator.h"
-#include "traffic-manager.h"
 #include "custom-controller.h"
+#include "traffic-manager.h"
 
 namespace ns3 {
 
@@ -59,7 +59,7 @@ TrafficHelper::TrafficHelper (Ptr<CustomController> controller,
 
   m_controller = controller;
   m_webNode = webNode;
-  m_ueContainer = ueNodes;
+  m_ueNodes = ueNodes;
 }
 
 TrafficHelper::~TrafficHelper ()
@@ -182,8 +182,8 @@ TrafficHelper::DoDispose ()
 
   m_poissonRng = 0;
   m_webNode = 0;
-  m_ueManager = 0;
-  m_ueNode = 0;
+  t_ueManager = 0;
+  t_ueNode = 0;
   m_gbrVidRng = 0;
   m_nonVidRng = 0;
   Object::DoDispose ();
@@ -448,19 +448,19 @@ TrafficHelper::ConfigureApplications ()
   NS_LOG_FUNCTION (this);
 
   // Install traffic manager and applications into UE nodes.
-  for (uint32_t u = 0; u < m_ueContainer.GetN (); u++)
+  for (uint32_t u = 0; u < m_ueNodes.GetN (); u++)
     {
       uint64_t ueImsi = u << 4;
 
-      m_ueNode = m_ueContainer.Get (u);
-      Ptr<Ipv4> clientIpv4 = m_ueNode->GetObject<Ipv4> ();
-      m_ueAddr = clientIpv4->GetAddress (1, 0).GetLocal ();
+      t_ueNode = m_ueNodes.Get (u);
+      Ptr<Ipv4> clientIpv4 = t_ueNode->GetObject<Ipv4> ();
+      t_ueAddr = clientIpv4->GetAddress (1, 0).GetLocal ();
 
       // Each UE gets one traffic manager.
-      m_ueManager = m_managerFac.Create<TrafficManager> ();
-      m_ueManager->SetImsi (ueImsi);
-      m_ueManager->SetController (m_controller);
-      m_ueNode->AggregateObject (m_ueManager);
+      t_ueManager = m_managerFac.Create<TrafficManager> ();
+      t_ueManager->SetController (m_controller);
+      t_ueManager->SetImsi (ueImsi);
+      t_ueNode->AggregateObject (t_ueManager);
 
       // Install enabled applications into this UE.
 
@@ -549,8 +549,8 @@ TrafficHelper::ConfigureApplications ()
           InstallAppDefault (m_livVideoHelper, ueImsi + 12);
         }
     }
-  m_ueManager = 0;
-  m_ueNode = 0;
+  t_ueManager = 0;
+  t_ueNode = 0;
 }
 
 uint16_t
@@ -571,11 +571,12 @@ TrafficHelper::InstallAppDefault (ApplicationHelper& helper, uint32_t teid)
 {
   NS_LOG_FUNCTION (this);
 
-  // Create and install the applications.
+  // Create the client and server applications.
   uint16_t port = 10000 + teid;
-  Ptr<SvelteClient> app = helper.Install (m_ueNode, m_webNode, m_ueAddr, m_webAddr, port);
-  app->SetTeid (teid);
-  m_ueManager->AddSvelteClient (app);
+  Ptr<SvelteClient> clientApp = helper.Install (
+      t_ueNode, m_webNode, t_ueAddr, m_webAddr, port);
+  clientApp->SetTeid (teid);
+  t_ueManager->AddSvelteClient (clientApp);
 }
 
 } // namespace ns3

@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2018 University of Campinas (Unicamp)
+ * Copyright (c) 2015 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,8 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
- *         Luciano J. Chaves <ljerezchaves@gmail.com>
+ * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
 #ifndef TRAFFIC_MANAGER_H
@@ -57,16 +56,16 @@ public:
   void AddSvelteClient (Ptr<SvelteClient> app);
 
   /**
-   * Set the IMSI attribute.
-   * \param value The ISMI value.
-   */
-  void SetImsi (uint64_t value);
-
-  /**
-   * Set the OpenFlow controller.
-   * \param controller The controller.
+   * Set the OpenFlow slice controller.
+   * \param controller The slice controller.
    */
   void SetController (Ptr<CustomController> controller);
+
+  /**
+   * Set the IMSI attribute.
+   * \param imsi The ISMI value.
+   */
+  void SetImsi (uint64_t imsi);
 
 protected:
   /** Destructor implementation. */

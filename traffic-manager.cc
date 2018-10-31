@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2018 University of Campinas (Unicamp)
+ * Copyright (c) 2015 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,8 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
- *         Luciano J. Chaves <ljerezchaves@gmail.com>
+ * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
 #include "traffic-manager.h"
@@ -104,18 +103,19 @@ TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
 }
 
 void
-TrafficManager::SetImsi (uint64_t value)
-{
-  NS_LOG_FUNCTION (this << value);
-
-  m_imsi = value;
-}
-
-
-void
 TrafficManager::SetController (Ptr<CustomController> controller)
 {
+  NS_LOG_FUNCTION (this << controller);
+
   m_ctrlApp = controller;
+}
+
+void
+TrafficManager::SetImsi (uint64_t imsi)
+{
+  NS_LOG_FUNCTION (this << imsi);
+
+  m_imsi = imsi;
 }
 
 void
@@ -159,7 +159,8 @@ TrafficManager::AppStartTry (Ptr<SvelteClient> app)
   SetNextAppStartTry (app);
 
   bool authorized = true;
-  if (app->GetTeid () != m_defaultTeid)
+  uint32_t teid = app->GetTeid ();
+  if (teid != m_defaultTeid)
     {
       // No resource request for traffic over default bearer.
       authorized = m_ctrlApp->DedicatedBearerRequest (app, m_imsi);
@@ -185,8 +186,8 @@ TrafficManager::NotifyAppStop (Ptr<SvelteClient> app)
   NS_LOG_FUNCTION (this << app);
 
   // No resource release for traffic over default bearer.
-  uint32_t appTeid = app->GetTeid ();
-  if (appTeid != m_defaultTeid)
+  uint32_t teid = app->GetTeid ();
+  if (teid != m_defaultTeid)
     {
       // Schedule the resource release procedure for +1 second.
       Simulator::Schedule (
