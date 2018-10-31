@@ -19,7 +19,8 @@
  *         Luciano J. Chaves <ljerezchaves@gmail.com>
  */
 
-#pragma once
+#ifndef CUSTOM_CONTROLLER_H
+#define CUSTOM_CONTROLLER_H
 
 #include <ns3/ofswitch13-module.h>
 #include <ns3/internet-module.h>
@@ -131,7 +132,7 @@ private:
   uint32_t sw2dlPort;     //!< Porta no SW para o DL.
 
   double m_blockThs;
-  bool m_blockPol;
+  bool   m_blockPol;
   double usageLimit = 0.9;
   double processingLimit = 0.9;
 
@@ -140,3 +141,4 @@ private:
 };
 
 } // namespace ns3
+#endif  // CUSTOM_CONTROLLER_H
