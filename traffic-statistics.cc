@@ -236,16 +236,12 @@ TrafficStatistics::DumpTraffic (
 {
   NS_LOG_FUNCTION (this << context << app->GetTeidHex ());
 
-  uint32_t teid = app->GetTeid ();
-  char teidStr[11];
-  sprintf (teidStr,"0x%08x",teid);
-
   if (app->GetAppName () != "LivVideo")
     {
       // Dump uplink statistics.
       *m_appWrapper->GetStream ()
         << " " << setw (8)  << Simulator::Now ().GetSeconds ()
-        << " " << setw (11) << std::string (teidStr)
+        << " " << setw (11) << app->GetTeidHex ()
         << " " << setw (8)  << app->GetAppName ()
         << " " << setw (6)  << DirectionStr (Direction::ULINK)
         << *app->GetServerAppStats ()
@@ -255,7 +251,7 @@ TrafficStatistics::DumpTraffic (
   // Dump downlink statistics.
   *m_appWrapper->GetStream ()
     << " " << setw (8)  << Simulator::Now ().GetSeconds ()
-    << " " << setw (11) << std::string (teidStr)
+    << " " << setw (11) << app->GetTeidHex ()
     << " " << setw (8)  << app->GetAppName ()
     << " " << setw (6)  << DirectionStr (Direction::DLINK)
     << *app->GetAppStats ()
@@ -266,6 +262,8 @@ void
 TrafficStatistics::NotifyRequest (
   std::string context, uint32_t teid, bool accepted)
 {
+  NS_LOG_FUNCTION (this << context << teid << accepted);
+
   m_admStats.tempRequests++;
   m_admStats.totalRequests++;
   if (accepted)
@@ -285,6 +283,8 @@ void
 TrafficStatistics::NotifyRelease (
   std::string context, uint32_t teid)
 {
+  NS_LOG_FUNCTION (this << context << teid);
+
   m_admStats.tempReleases++;
   m_admStats.totalReleases++;
   m_admStats.activeBearers--;
