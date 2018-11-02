@@ -24,51 +24,14 @@
 #include <fstream>
 
 #undef NS_LOG_APPEND_CONTEXT
-#define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[BuffVid server teid " << GetTeidHex () << "] ";
+#define NS_LOG_APPEND_CONTEXT                             \
+  std::clog << "[" << GetAppName ()                       \
+            << " server teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("BufferedVideoServer");
 NS_OBJECT_ENSURE_REGISTERED (BufferedVideoServer);
-
-/**
- * \brief Default trace to send.
- */
-struct BufferedVideoServer::TraceEntry
-BufferedVideoServer::g_defaultEntries[] =
-{
-  {
-    0,  534, 'I'
-  },
-  {
-    40, 1542, 'P'
-  },
-  {
-    120,  134, 'B'
-  },
-  {
-    80,  390, 'B'
-  },
-  {
-    240,  765, 'P'
-  },
-  {
-    160,  407, 'B'
-  },
-  {
-    200,  504, 'B'
-  },
-  {
-    360,  903, 'P'
-  },
-  {
-    280,  421, 'B'
-  },
-  {
-    320,  587, 'B'
-  }
-};
 
 TypeId
 BufferedVideoServer::GetTypeId (void)
@@ -81,21 +44,6 @@ BufferedVideoServer::GetTypeId (void)
                    StringValue (""),
                    MakeStringAccessor (&BufferedVideoServer::SetTraceFile),
                    MakeStringChecker ())
-    //
-    // For traffic length, we are considering a statistic that the majority of
-    // YouTube brand videos are somewhere between 31 and 120 seconds long. So
-    // we are using the average length of 1min 30sec, with 15sec stdev. See
-    // http://tinyurl.com/q5xkwnn and http://tinyurl.com/klraxum for more
-    // information on this topic. Note that this length will only be used to
-    // get the size of the video which will be sent to the client over a TCP
-    // connection.
-    //
-    .AddAttribute ("TrafficLength",
-                   "A random variable used to pick the traffic length [s].",
-                   StringValue (
-                     "ns3::NormalRandomVariable[Mean=90.0|Variance=225.0]"),
-                   MakePointerAccessor (&BufferedVideoServer::m_lengthRng),
-                   MakePointerChecker <RandomVariableStream> ())
   ;
   return tid;
 }
@@ -118,11 +66,7 @@ BufferedVideoServer::SetTraceFile (std::string traceFile)
 {
   NS_LOG_FUNCTION (this << traceFile);
 
-  if (traceFile == "")
-    {
-      LoadDefaultTrace ();
-    }
-  else
+  if (!traceFile.empty ())
     {
       LoadTrace (traceFile);
     }
@@ -133,7 +77,6 @@ BufferedVideoServer::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
-  m_lengthRng = 0;
   m_entries.clear ();
   SvelteServer::DoDispose ();
 }
@@ -143,6 +86,7 @@ BufferedVideoServer::StartApplication ()
 {
   NS_LOG_FUNCTION (this);
 
+  NS_ABORT_MSG_IF (m_entries.empty (), "No trace file loaded.");
   NS_LOG_INFO ("Creating the listening TCP socket.");
   TypeId tcpFactory = TypeId::LookupByName ("ns3::TcpSocketFactory");
   m_socket = Socket::CreateSocket (GetNode (), tcpFactory);
@@ -278,9 +222,11 @@ BufferedVideoServer::ProccessHttpRequest (Ptr<Socket> socket,
   NS_LOG_INFO ("Client requested " << url);
   if (url == "main/video")
     {
+      // Get traffic length from client request.
+      Time videoLength = Time (header.GetHeaderField ("TrafficLength"));
+
       // Set parameter values.
       m_pendingBytes = m_chunkSize;
-      Time videoLength = Seconds (std::abs (m_lengthRng->GetValue ()));
       uint32_t numChunks = GetVideoChunks (videoLength) - 1;
       NS_LOG_INFO ("Video with " << numChunks << " chunks of " <<
                    m_chunkSize << " bytes each.");
@@ -354,11 +300,7 @@ BufferedVideoServer::LoadTrace (std::string filename)
 
   std::ifstream ifTraceFile;
   ifTraceFile.open (filename.c_str (), std::ifstream::in);
-  if (!ifTraceFile.good ())
-    {
-      NS_LOG_WARN ("Trace file not found. Loading default trace.");
-      LoadDefaultTrace ();
-    }
+  NS_ABORT_MSG_IF (!ifTraceFile.good (), "Trace file not found.");
 
   while (ifTraceFile.good ())
     {
@@ -377,30 +319,6 @@ BufferedVideoServer::LoadTrace (std::string filename)
       m_entries.push_back (entry);
     }
   ifTraceFile.close ();
-}
-
-void
-BufferedVideoServer::LoadDefaultTrace (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  uint32_t prevTime = 0;
-  for (uint32_t i = 0; i < (sizeof (g_defaultEntries) /
-                            sizeof (struct TraceEntry)); i++)
-    {
-      struct TraceEntry entry = g_defaultEntries[i];
-      if (entry.frameType == 'B')
-        {
-          entry.timeToSend = 0;
-        }
-      else
-        {
-          uint32_t tmp = entry.timeToSend;
-          entry.timeToSend -= prevTime;
-          prevTime = tmp;
-        }
-      m_entries.push_back (entry);
-    }
 }
 
 uint32_t

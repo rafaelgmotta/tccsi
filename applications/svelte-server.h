@@ -52,14 +52,17 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  /** \name Private member accessors. */
+  /**
+   * \name Private member accessors.
+   * \return The requested value.
+   */
   //\{
-  std::string GetAppName (void) const;
-  bool IsActive (void) const;
-  bool IsForceStop (void) const;
-  std::string GetTeidHex (void) const;
-  Ptr<SvelteClient> GetClientApp (void) const;
-  Ptr<const AppStatsCalculator> GetAppStats (void) const;
+  std::string                   GetAppName    (void) const;
+  Ptr<const AppStatsCalculator> GetAppStats   (void) const;
+  Ptr<SvelteClient>             GetClientApp  (void) const;
+  std::string                   GetTeidHex    (void) const;
+  bool                          IsActive      (void) const;
+  bool                          IsForceStop   (void) const;
   //\}
 
   /**

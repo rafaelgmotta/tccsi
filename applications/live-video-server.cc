@@ -25,51 +25,14 @@
 #include <fstream>
 
 #undef NS_LOG_APPEND_CONTEXT
-#define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[LiveVid server teid " << GetTeidHex () << "] ";
+#define NS_LOG_APPEND_CONTEXT                             \
+  std::clog << "[" << GetAppName ()                       \
+            << " server teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LiveVideoServer");
 NS_OBJECT_ENSURE_REGISTERED (LiveVideoServer);
-
-/**
- * \brief Default trace to send.
- */
-struct LiveVideoServer::TraceEntry
-LiveVideoServer::g_defaultEntries[] =
-{
-  {
-    0,  534, 'I'
-  },
-  {
-    40, 1542, 'P'
-  },
-  {
-    120,  134, 'B'
-  },
-  {
-    80,  390, 'B'
-  },
-  {
-    240,  765, 'P'
-  },
-  {
-    160,  407, 'B'
-  },
-  {
-    200,  504, 'B'
-  },
-  {
-    360,  903, 'P'
-  },
-  {
-    280,  421, 'B'
-  },
-  {
-    320,  587, 'B'
-  }
-};
 
 TypeId
 LiveVideoServer::GetTypeId (void)
@@ -107,11 +70,7 @@ LiveVideoServer::SetTraceFile (std::string traceFile)
 {
   NS_LOG_FUNCTION (this << traceFile);
 
-  if (traceFile == "")
-    {
-      LoadDefaultTrace ();
-    }
-  else
+  if (!traceFile.empty ())
     {
       LoadTrace (traceFile);
     }
@@ -132,6 +91,7 @@ LiveVideoServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
 
+  NS_ABORT_MSG_IF (m_entries.empty (), "No trace file loaded.");
   NS_LOG_INFO ("Opening the UDP socket.");
   TypeId udpFactory = TypeId::LookupByName ("ns3::UdpSocketFactory");
   m_socket = Socket::CreateSocket (GetNode (), udpFactory);
@@ -191,11 +151,7 @@ LiveVideoServer::LoadTrace (std::string filename)
 
   std::ifstream ifTraceFile;
   ifTraceFile.open (filename.c_str (), std::ifstream::in);
-  if (!ifTraceFile.good ())
-    {
-      NS_LOG_WARN ("Trace file not found. Loading default trace.");
-      LoadDefaultTrace ();
-    }
+  NS_ABORT_MSG_IF (!ifTraceFile.good (), "Trace file not found.");
 
   while (ifTraceFile.good ())
     {
@@ -214,30 +170,6 @@ LiveVideoServer::LoadTrace (std::string filename)
       m_entries.push_back (entry);
     }
   ifTraceFile.close ();
-}
-
-void
-LiveVideoServer::LoadDefaultTrace (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  uint32_t prevTime = 0;
-  for (uint32_t i = 0; i < (sizeof (g_defaultEntries) /
-                            sizeof (struct TraceEntry)); i++)
-    {
-      struct TraceEntry entry = g_defaultEntries[i];
-      if (entry.frameType == 'B')
-        {
-          entry.timeToSend = 0;
-        }
-      else
-        {
-          uint32_t tmp = entry.timeToSend;
-          entry.timeToSend -= prevTime;
-          prevTime = tmp;
-        }
-      m_entries.push_back (entry);
-    }
 }
 
 void

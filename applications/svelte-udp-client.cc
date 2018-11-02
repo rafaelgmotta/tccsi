@@ -49,11 +49,6 @@ SvelteUdpClient::GetTypeId (void)
                    StringValue ("ns3::ConstantRandomVariable[Constant=100]"),
                    MakePointerAccessor (&SvelteUdpClient::m_pktSizeRng),
                    MakePointerChecker <RandomVariableStream> ())
-    .AddAttribute ("TrafficLength",
-                   "A random variable used to pick the traffic length [s].",
-                   StringValue ("ns3::ConstantRandomVariable[Constant=30.0]"),
-                   MakePointerAccessor (&SvelteUdpClient::m_lengthRng),
-                   MakePointerChecker <RandomVariableStream> ())
   ;
   return tid;
 }
@@ -75,9 +70,8 @@ SvelteUdpClient::Start ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Schedule the ForceStop method to stop traffic generation on both sides
-  // based on traffic length.
-  Time sTime = Seconds (std::abs (m_lengthRng->GetValue ()));
+  // Schedule the ForceStop method to stop traffic based on traffic length.
+  Time sTime = GetTrafficLength ();
   m_stopEvent = Simulator::Schedule (sTime, &SvelteUdpClient::ForceStop, this);
   NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
 
@@ -95,7 +89,6 @@ SvelteUdpClient::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
-  m_lengthRng = 0;
   m_stopEvent.Cancel ();
   m_sendEvent.Cancel ();
   SvelteClient::DoDispose ();

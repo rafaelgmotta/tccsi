@@ -113,11 +113,6 @@ private:
   void LoadTrace (std::string filename);
 
   /**
-   * \brief Load the default video trace.
-   */
-  void LoadDefaultTrace (void);
-
-  /**
    * Get the number of chunks based on the given video length and chunk size.
    * \param length The video length.
    * \return The number of chunks for this video.
@@ -137,8 +132,6 @@ private:
   bool                            m_connected;        //!< Connected state.
   uint32_t                        m_pendingBytes;     //!< Pending bytes.
   uint32_t                        m_chunkSize;        //!< Chunk size.
-  Ptr<RandomVariableStream>       m_lengthRng;        //!< Length generator.
-  static struct TraceEntry        g_defaultEntries[]; //!< Default trace.
   std::vector<struct TraceEntry>  m_entries;          //!< Trace entries.
 };
 

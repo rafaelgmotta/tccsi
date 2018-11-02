@@ -61,24 +61,33 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  /** \name Private member accessors. */
+  /**
+   * \name Private member accessors.
+   * \return The requested value.
+   */
   //\{
-  std::string GetAppName (void) const;
-  std::string GetNameTeid (void) const;
-  bool IsActive (void) const;
-  Time GetMaxOnTime (void) const;
-  bool IsForceStop (void) const;
-  EpsBearer GetEpsBearer (void) const;
-  uint8_t GetEpsBearerId (void) const;
-  uint32_t GetTeid (void) const;
-  std::string GetTeidHex (void) const;
-  Ptr<SvelteServer> GetServerApp (void) const;
-  Ptr<const AppStatsCalculator> GetAppStats (void) const;
+  std::string                   GetAppName        (void) const;
+  Ptr<const AppStatsCalculator> GetAppStats       (void) const;
+  EpsBearer                     GetEpsBearer      (void) const;
+  uint8_t                       GetEpsBearerId    (void) const;
+  Time                          GetMaxOnTime      (void) const;
+  std::string                   GetNameTeid       (void) const;
+  Ptr<SvelteServer>             GetServerApp      (void) const;
   Ptr<const AppStatsCalculator> GetServerAppStats (void) const;
+  uint32_t                      GetTeid           (void) const;
+  std::string                   GetTeidHex        (void) const;
+  bool                          IsActive          (void) const;
+  bool                          IsForceStop       (void) const;
+  //\}
 
-  void SetEpsBearer (EpsBearer value);
-  void SetEpsBearerId (uint8_t value);
-  void SetTeid (uint32_t value);
+  /**
+   * \name Private member modifiers.
+   * \param value The value to set.
+   */
+  //\{
+  void                          SetEpsBearer      (EpsBearer  value);
+  void                          SetEpsBearerId    (uint8_t    value);
+  void                          SetTeid           (uint32_t   value);
   //\}
 
   /**
@@ -110,6 +119,12 @@ protected:
    * closing sockets and notifying the stop event.
    */
   virtual void ForceStop ();
+
+  /**
+   * Get the random traffic length for this application.
+   * \return The random traffic length.
+   */
+  Time GetTrafficLength ();
 
   /**
    * Notify the stop event on this client application. This function is
@@ -155,16 +170,17 @@ private:
    */
   void ResetAppStats ();
 
-  std::string   m_name;           //!< Application name.
-  bool          m_active;         //!< Active state.
-  Time          m_maxOnTime;      //!< Max duration time.
-  EventId       m_forceStop;      //!< Max duration stop event.
-  bool          m_forceStopFlag;  //!< Force stop flag.
+  std::string               m_name;           //!< Application name.
+  bool                      m_active;         //!< Active state.
+  Ptr<RandomVariableStream> m_lengthRng;      //!< Random traffic length.
+  Time                      m_maxOnTime;      //!< Max duration time.
+  EventId                   m_forceStop;      //!< Max duration stop event.
+  bool                      m_forceStopFlag;  //!< Force stop flag.
 
-  // LTE EPS metadata
-  EpsBearer     m_bearer;         //!< EPS bearer info.
-  uint8_t       m_bearerId;       //!< EPS bearer ID.
-  uint32_t      m_teid;           //!< GTP TEID associated with this app.
+  // LTE EPS metadata.
+  EpsBearer                 m_bearer;         //!< EPS bearer info.
+  uint8_t                   m_bearerId;       //!< EPS bearer ID.
+  uint32_t                  m_teid;           //!< GTP TEID.
 };
 
 } // namespace ns3
