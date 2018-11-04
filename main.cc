@@ -49,7 +49,7 @@ static ns3::GlobalValue
 // Number of client hosts in the simulation.
 static ns3::GlobalValue
   g_numHosts ("NumHosts", "Number of client hosts.",
-              ns3::UintegerValue (4),
+              ns3::UintegerValue (1),
               ns3::MakeUintegerChecker<uint16_t> ());
 
 void ForceDefaults  ();
