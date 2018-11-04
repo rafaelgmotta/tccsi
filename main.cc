@@ -144,20 +144,24 @@ main (int argc, char *argv[])
 
   // Configure switch nodes UL and DL as standard OpenFlow switches.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (3));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("100Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (65535));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (20)));
   Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl);
   Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl);
 
   // Configure switch node HW as a hardware-based OpenFlow switch.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
-  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("1Gbps"));
-  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (512));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("100Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (65535));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (20)));
   Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw);
 
   // Configure switch node SW as a software-based OpenFlow switch.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
-  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("10Mbps"));
-  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (10000));
-  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (100)));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("100Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (65535));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (20)));
   Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw);
 
   // Connecting switches.
