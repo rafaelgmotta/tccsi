@@ -114,10 +114,10 @@ main (int argc, char *argv[])
   // Create the simulation scenario.
   NS_LOG_INFO ("Creating simulation scenario...");
 
-  // Configure the CsmaHelper to connect OpenFlow switches (40KM Fiber cable)
+  // Configure the CsmaHelper to connect OpenFlow switches (2KM Fiber cable)
   CsmaHelper csmaHelper;
-  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (200)));
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (10)));
 
   // Create the OpenFlow helper.
   Ptr<OFSwitch13InternalHelper> of13Helper =
@@ -213,10 +213,6 @@ main (int argc, char *argv[])
   // Configure IPv4 addresses helper.
   Ipv4AddressHelper ipv4helpr;
   ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0");
-
-  // Configure the CsmaHelper to connect hosts to switches.
-  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0)));
 
   // Connect the single server node to the DL switch.
   NetDeviceContainer dl2svLink = csmaHelper.Install (switchNodeDl, serverNode);
