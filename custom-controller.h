@@ -131,10 +131,8 @@ private:
   uint32_t sw2ulPort;     //!< Porta no SW para o UL.
   uint32_t sw2dlPort;     //!< Porta no SW para o DL.
 
-  double m_blockThs;
-  bool   m_blockPol;
-  double usageLimit = 0.9;
-  double processingLimit = 0.9;
+  double   m_blockThs;    //!< Taxa de bloqueio.
+  bool     m_blockPol;    //!< Política de bloqueio.
 
   TracedCallback<uint32_t, bool> m_requestTrace;  //!< Request trace source.
   TracedCallback<uint32_t>       m_releaseTrace;  //!< Release trace source.
