@@ -64,7 +64,7 @@ main (int argc, char *argv[])
   bool        pcap     = false;
   bool        ofsLog   = false;
   uint32_t    progress = 0;
-  uint32_t    simTime  = 250;
+  uint32_t    simTime  = 500;
   std::string prefix   = "";
 
   // Parse command line arguments
