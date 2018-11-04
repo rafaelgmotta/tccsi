@@ -289,7 +289,7 @@ SvelteClient::GetTrafficLength ()
 {
   NS_LOG_FUNCTION (this);
 
-  return Seconds (m_lengthRng->GetValue ());
+  return Seconds (std::abs (m_lengthRng->GetValue ()));
 }
 
 void

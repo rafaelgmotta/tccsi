@@ -110,8 +110,8 @@ SvelteUdpServer::NotifyStart ()
 
   // Start traffic.
   m_sendEvent.Cancel ();
-  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
-                                     &SvelteUdpServer::SendPacket, this);
+  Time send = Seconds (std::abs (m_pktInterRng->GetValue ()));
+  m_sendEvent = Simulator::Schedule (send, &SvelteUdpServer::SendPacket, this);
 }
 
 void
@@ -131,7 +131,7 @@ SvelteUdpServer::SendPacket ()
 {
   NS_LOG_FUNCTION (this);
 
-  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetValue ());
+  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetInteger ());
 
   SeqTsHeader seqTs;
   seqTs.SetSeq (NotifyTx (packet->GetSize () + seqTs.GetSerializedSize ()));
@@ -149,8 +149,8 @@ SvelteUdpServer::SendPacket ()
     }
 
   // Schedule next packet transmission.
-  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
-                                     &SvelteUdpServer::SendPacket, this);
+  Time send = Seconds (std::abs (m_pktInterRng->GetValue ()));
+  m_sendEvent = Simulator::Schedule (send, &SvelteUdpServer::SendPacket, this);
 }
 
 void

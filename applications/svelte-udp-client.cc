@@ -71,17 +71,17 @@ SvelteUdpClient::Start ()
   NS_LOG_FUNCTION (this);
 
   // Schedule the ForceStop method to stop traffic based on traffic length.
-  Time sTime = GetTrafficLength ();
-  m_stopEvent = Simulator::Schedule (sTime, &SvelteUdpClient::ForceStop, this);
-  NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
+  Time stop = GetTrafficLength ();
+  m_stopEvent = Simulator::Schedule (stop, &SvelteUdpClient::ForceStop, this);
+  NS_LOG_INFO ("Set traffic length to " << stop.GetSeconds () << "s.");
 
   // Chain up to reset statistics, notify server, and fire start trace source.
   SvelteClient::Start ();
 
   // Start traffic.
   m_sendEvent.Cancel ();
-  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
-                                     &SvelteUdpClient::SendPacket, this);
+  Time send = Seconds (std::abs (m_pktInterRng->GetValue ()));
+  m_sendEvent = Simulator::Schedule (send, &SvelteUdpClient::SendPacket, this);
 }
 
 void
@@ -142,7 +142,7 @@ SvelteUdpClient::SendPacket ()
 {
   NS_LOG_FUNCTION (this);
 
-  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetValue ());
+  Ptr<Packet> packet = Create<Packet> (m_pktSizeRng->GetInteger ());
 
   SeqTsHeader seqTs;
   seqTs.SetSeq (NotifyTx (packet->GetSize () + seqTs.GetSerializedSize ()));
@@ -160,8 +160,8 @@ SvelteUdpClient::SendPacket ()
     }
 
   // Schedule next packet transmission.
-  m_sendEvent = Simulator::Schedule (Seconds (m_pktInterRng->GetValue ()),
-                                     &SvelteUdpClient::SendPacket, this);
+  Time send = Seconds (std::abs (m_pktInterRng->GetValue ()));
+  m_sendEvent = Simulator::Schedule (send, &SvelteUdpClient::SendPacket, this);
 }
 
 void
