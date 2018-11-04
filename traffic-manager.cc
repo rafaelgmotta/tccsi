@@ -65,7 +65,7 @@ TrafficManager::GetTypeId (void)
                    "The time to start the applications.",
                    TimeValue (Seconds (1)),
                    MakeTimeAccessor (&TrafficManager::m_startAppsAt),
-                   MakeTimeChecker (Time (0)))
+                   MakeTimeChecker (Seconds (1)))
     .AddAttribute ("StopAppsAt",
                    "The time to stop the applications.",
                    TimeValue (Seconds (400)),
