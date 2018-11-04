@@ -115,8 +115,8 @@ private:
   ObjectFactory               m_managerFac;       //!< Traffic manager factory.
   Ptr<RandomVariableStream>   m_poissonRng;       //!< Inter-arrival traffic.
   bool                        m_restartApps;      //!< Continuous restart apps.
-  Time                        m_startAppsAfter;   //!< Time before start apps.
-  Time                        m_stopRestartAppsAt; //!< Stop restart apps time.
+  Time                        m_startAppsAt;      //!< Time to start apps.
+  Time                        m_stopAppsAt;       //!< Time to stop apps.
 
   // Enabled applications.
   bool                        m_dftHttpPage;      //!< Non-GBR default HTTP.

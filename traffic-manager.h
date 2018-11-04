@@ -111,8 +111,8 @@ private:
 
   Ptr<RandomVariableStream> m_poissonRng;       //!< Inter-arrival traffic.
   bool                      m_restartApps;      //!< Continuously restart apps.
-  Time                      m_startAppsAfter;   //!< Time before starting apps.
-  Time                      m_stopRestartAppsAt; //!< Stop restart apps time.
+  Time                      m_startAppsAt;      //!< Time to start apps.
+  Time                      m_stopAppsAt;       //!< Time to stop apps.
   Ptr<CustomController>     m_ctrlApp;          //!< OpenFlow slice controller.
   uint64_t                  m_imsi;             //!< UE IMSI identifier.
   uint32_t                  m_defaultTeid;      //!< Default UE tunnel TEID.

@@ -87,16 +87,16 @@ TrafficHelper::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&TrafficHelper::m_restartApps),
                    MakeBooleanChecker ())
-    .AddAttribute ("StartAppsAfter",
-                   "The time before starting the applications.",
+    .AddAttribute ("StartAppsAt",
+                   "The time to start the applications.",
                    TimeValue (Seconds (1)),
-                   MakeTimeAccessor (&TrafficHelper::m_startAppsAfter),
-                   MakeTimeChecker ())
-    .AddAttribute ("StopRestartAppsAt",
-                   "The time to disable the RestartApps attribute.",
-                   TimeValue (Seconds (0)),
-                   MakeTimeAccessor (&TrafficHelper::m_stopRestartAppsAt),
-                   MakeTimeChecker ())
+                   MakeTimeAccessor (&TrafficHelper::m_startAppsAt),
+                   MakeTimeChecker (Time (0)))
+    .AddAttribute ("StopAppsAt",
+                   "The time to stop the applications.",
+                   TimeValue (Time (0)),
+                   MakeTimeAccessor (&TrafficHelper::m_stopAppsAt),
+                   MakeTimeChecker (Time (0)))
 
     // Applications to be installed.
     .AddAttribute ("EnableDftHttpPage",
@@ -203,8 +203,8 @@ TrafficHelper::NotifyConstructionCompleted ()
   m_managerFac.SetTypeId (TrafficManager::GetTypeId ());
   m_managerFac.Set ("PoissonInterArrival", PointerValue (m_poissonRng));
   m_managerFac.Set ("RestartApps", BooleanValue (m_restartApps));
-  m_managerFac.Set ("StartAppsAfter", TimeValue (m_startAppsAfter));
-  m_managerFac.Set ("StopRestartAppsAt", TimeValue (m_stopRestartAppsAt));
+  m_managerFac.Set ("StartAppsAt", TimeValue (m_startAppsAt));
+  m_managerFac.Set ("StopAppsAt", TimeValue (m_stopAppsAt));
 
   // Configure random video selections.
   m_gbrVidRng = CreateObject<UniformRandomVariable> ();
