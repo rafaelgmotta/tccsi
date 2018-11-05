@@ -31,7 +31,13 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("CustomController");
 NS_OBJECT_ENSURE_REGISTERED (CustomController);
-
+std::string
+GetTeidHex (uint32_t value)
+{
+  char valueStr [11];
+  sprintf (valueStr, "0x%08x", value);
+  return std::string (valueStr);
+}
 CustomController::CustomController ()
 {
   NS_LOG_FUNCTION (this);
@@ -58,6 +64,11 @@ CustomController::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&CustomController::m_blockPol),
                    MakeBooleanChecker ())
+    .AddAttribute ("SmartRouting",
+                   "True for QoS routing",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&CustomController::m_smartRouting),
+                   MakeBooleanChecker ())
 
     .AddTraceSource ("Request", "The request trace source.",
                      MakeTraceSourceAccessor (&CustomController::m_requestTrace),
@@ -83,13 +94,22 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   // IPs pares são enviados para o HW e IP ímpares para o SW.
   Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
-  uint32_t ipImpar = ipv4addr.Get () & 1;
-  Ptr<OFSwitch13Device> switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
+
+  Ptr<OFSwitch13Device> switchDevice;
+
+  if(m_smartRouting)
+  {
+    switchDevice = switchDeviceSw;
+  }
+  else
+  {
+    uint32_t ipImpar = ipv4addr.Get () & 1;
+    switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
+  }
+  
 
   // String representando o TEID em hexadecimal.
   uint32_t teid = app->GetTeid ();
-  char teidStr[11];
-  sprintf (teidStr,"0x%08x",teid);
 
   // Verifica os recursos disponíveis no switch (processamento e uso de tabelas)
   double usage = switchDevice->GetFlowTableUsage (0);
@@ -110,12 +130,22 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
       return false;
     }
 
+  InstallTrafficRules(switchDevice, ipv4addr, port, teid, ehTcp);
+
+  m_requestTrace (teid, true);
+  return true;
+}
+
+void
+CustomController::InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, 
+  Ipv4Address ipv4addr, uint16_t port, uint32_t teid, bool ehTcp)
+{
   // Se o tráfego não foi bloqueado, então vamos instalar as regras de
   // encaminhamento no switch SW ou HW.
   std::ostringstream cmdUl, cmdDl;
-  cmdUl << "flow-mod cmd=add,prio=64,table=0,cookie=" << teidStr
+  cmdUl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetTeidHex(teid)
         << " eth_type=0x800,ip_src=" << ipv4addr;
-  cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << teidStr
+  cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetTeidHex(teid)
         << " eth_type=0x800,ip_dst=" << ipv4addr;
   if (ehTcp)
     {
@@ -133,10 +163,8 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   cmdDl << " write:group=2";
   DpctlExecute (switchDevice->GetDatapathId (), cmdUl.str ());
   DpctlExecute (switchDevice->GetDatapathId (), cmdDl.str ());
-
-  m_requestTrace (teid, true);
-  return true;
 }
+
 
 bool
 CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
@@ -145,25 +173,23 @@ CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
 
   // String representando o TEID em hexadecimal.
   uint32_t teid = app->GetTeid ();
-  char teidStr[11];
-  sprintf (teidStr,"0x%08x",teid);
 
-  // Na política atual o IP do cliente é utilizado para definir o switch.
-  // IPs pares são enviados para o HW e IP ímpares para o SW.
-  Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
-  Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
-  uint32_t ipImpar = ipv4addr.Get () & 1;
-  Ptr<OFSwitch13Device> switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
-
-  // Remover todas as regras identificadas pelo cookie com o TEID do tráfego.
-  std::ostringstream cmd;
-  cmd << "flow-mod cmd=del"
-      << ",cookie="       << teidStr
-      << ",cookie_mask="  << COOKIE_STRICT_MASK_STR;
-  DpctlExecute (switchDevice->GetDatapathId (), cmd.str ());
+  RemoveTrafficRules(switchDeviceSw, teid);
+  RemoveTrafficRules(switchDeviceHw, teid);
 
   m_releaseTrace (teid);
   return true;
+}
+
+void 
+CustomController::RemoveTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid)
+{
+// Remover todas as regras identificadas pelo cookie com o TEID do tráfego.
+  std::ostringstream cmd;
+  cmd << "flow-mod cmd=del"
+      << ",cookie="       << GetTeidHex(teid)
+      << ",cookie_mask="  << COOKIE_STRICT_MASK_STR;
+  DpctlExecute (switchDevice->GetDatapathId (), cmd.str ());
 }
 
 void
@@ -357,7 +383,14 @@ CustomController::NotifyTopologyBuilt ()
 
   // De acordo com a política de roteamento em vigor, faça a chamada para a
   // função que instala as regras adequadamente.
-  ConfigureByIp ();
+  if(m_smartRouting)
+  {
+    ConfigureByQoS();
+  }
+  else
+  {
+    ConfigureByIp ();
+  }
 }
 
 void
@@ -427,6 +460,43 @@ CustomController::ConfigureByIp ()
     DpctlSchedule (switchDeviceDl->GetDatapathId (), cmdHw.str ());
     DpctlSchedule (switchDeviceDl->GetDatapathId (), cmdSw.str ());
   }
+}
+
+void
+CustomController::ConfigureByQoS ()
+{
+  NS_LOG_FUNCTION (this);
+
+  // Nesta função vamos instalar as regras de roteamento interno sempre no switch de SW.
+
+  // Pacotes originados nos clientes, que estão entrando através do switch UL.
+  {
+    std::ostringstream cmdSw;
+
+
+    cmdSw << "flow-mod cmd=add,prio=64,table=1"
+          << " eth_type=0x800"
+          << " apply:output=" << ul2swPort;
+
+    DpctlSchedule (switchDeviceUl->GetDatapathId (), cmdSw.str ());
+  }
+
+  // Pacotes originados no servidor, que estão entrando através do switch DL.
+  {
+    std::ostringstream cmdSw;
+
+    cmdSw << "flow-mod cmd=add,prio=64,table=1"
+          << " eth_type=0x800"
+          << " apply:output=" << dl2swPort;
+
+    DpctlSchedule (switchDeviceDl->GetDatapathId (), cmdSw.str ());
+  }
+}
+
+void
+CustomController::QoSBalancer()
+{
+
 }
 
 } // namespace ns3
