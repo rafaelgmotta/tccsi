@@ -177,7 +177,7 @@ main (int argc, char *argv[])
   uint32_t sw2dlPort = switchDeviceSw->AddSwitchPort (sw2dlLink.Get (0))->GetPortNo ();
   uint32_t dl2swPort = switchDeviceDl->AddSwitchPort (sw2dlLink.Get (1))->GetPortNo ();
 
-  // Notify the controller about switches (don't change the oder!)
+  // Notify the controller about switches (don't change the order!)
   controllerApp->NotifyHwSwitch (switchDeviceHw, hw2ulPort, hw2dlPort);
   controllerApp->NotifySwSwitch (switchDeviceSw, sw2ulPort, sw2dlPort);
 

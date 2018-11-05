@@ -197,7 +197,11 @@ TrafficHelper::NotifyConstructionCompleted ()
   // Saving server metadata.
   NS_ASSERT_MSG (m_webNode->GetNDevices () == 2, "Single device expected.");
   Ptr<NetDevice> webDev = m_webNode->GetDevice (1);
-  m_webAddr = Ipv4AddressHelper::GetAddress (webDev);
+  
+
+  Ptr<Ipv4> ipv4 = m_webNode->GetObject<Ipv4> ();
+  int32_t ifIndex = ipv4->GetInterfaceForDevice (webDev);
+  m_webAddr = ipv4->GetAddress (ifIndex, 0).GetLocal ();
 
   // Configure the traffic manager object factory.
   m_managerFac.SetTypeId (TrafficManager::GetTypeId ());

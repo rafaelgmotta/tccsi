@@ -74,7 +74,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
-  // Estamos considerand os valores manualmente adicionados ao TEID para
+  // Estamos considerando os valores manualmente adicionados ao TEID para
   // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
   bool ehTcp = (app->GetTeid () & 0xF) <= 3;
   uint16_t port = app->GetTeid () + 10000;
@@ -91,7 +91,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   char teidStr[11];
   sprintf (teidStr,"0x%08x",teid);
 
-  // Verifica os recursos disponíveis no switch (processamento e uso de tablas)
+  // Verifica os recursos disponíveis no switch (processamento e uso de tabelas)
   double usage = switchDevice->GetFlowTableUsage (0);
   double processing = switchDevice->GetProcessingUsage ();
 
@@ -102,7 +102,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
       return false;
     }
 
-  // Se udo de processamento excede o limiar de bloquei, a decisão do bloqueio
+  // Se uso de processamento excede o limiar de bloqueio, a decisão do bloqueio
   // se baseia no atributo de política de bloqueio.
   if (m_blockPol && processing > processingLimit)
     {
