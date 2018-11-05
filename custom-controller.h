@@ -118,9 +118,9 @@ private:
   void ConfigureByIp ();
   void ConfigureByQoS();
   void QoSBalancer();
-  void InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice,
-   Ipv4Address ipv4addr, uint16_t port, uint32_t teid, bool ehTcp);
+  void InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
   void RemoveTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
+  void MoveToHWSwitch(uint32_t teid);
 
   Ptr<OFSwitch13Device> switchDeviceUl;     //!< UL switch device.
   Ptr<OFSwitch13Device> switchDeviceDl;     //!< DL switch device.
@@ -140,6 +140,7 @@ private:
   bool     m_blockPol;     //!< Política de bloqueio.
   bool     m_smartRouting; //!< Politica de roteamento.
   Time     m_qoSTimeout;   //!< Timeout de QoS.
+  std::map<uint32_t, Ipv4Address> m_teidAddr; 
 
   TracedCallback<uint32_t, bool> m_requestTrace;  //!< Request trace source.
   TracedCallback<uint32_t>       m_releaseTrace;  //!< Release trace source.

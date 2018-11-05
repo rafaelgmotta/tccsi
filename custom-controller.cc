@@ -90,15 +90,14 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
-  // Estamos considerando os valores manualmente adicionados ao TEID para
-  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
-  bool ehTcp = (app->GetTeid () & 0xF) <= 3;
-  uint16_t port = app->GetTeid () + 10000;
+  
 
   // Na política atual o IP do cliente é utilizado para definir o switch.
   // IPs pares são enviados para o HW e IP ímpares para o SW.
   Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
+
+  m_teidAddr[app->GetTeid()]=ipv4addr;
 
   Ptr<OFSwitch13Device> switchDevice;
 
@@ -135,7 +134,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
       return false;
     }
 
-  InstallTrafficRules(switchDevice, ipv4addr, port, teid, ehTcp);
+  InstallTrafficRules(switchDevice,teid);
 
   m_requestTrace (teid, true);
   return true;
@@ -143,8 +142,15 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 
 void
 CustomController::InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, 
-  Ipv4Address ipv4addr, uint16_t port, uint32_t teid, bool ehTcp)
+  uint32_t teid)
 {
+  Ipv4Address ipv4addr = m_teidAddr[teid];
+
+  // Estamos considerando os valores manualmente adicionados ao TEID para
+  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
+  bool ehTcp = (teid & 0xF) <= 3;
+  uint16_t port = teid + 10000;
+
   // Se o tráfego não foi bloqueado, então vamos instalar as regras de
   // encaminhamento no switch SW ou HW.
   std::ostringstream cmdUl, cmdDl;
@@ -152,6 +158,7 @@ CustomController::InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice,
         << " eth_type=0x800,ip_src=" << ipv4addr;
   cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetTeidHex(teid)
         << " eth_type=0x800,ip_dst=" << ipv4addr;
+
   if (ehTcp)
     {
       // Regras específicas para protocolo TCP
@@ -181,6 +188,8 @@ CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
 
   RemoveTrafficRules(switchDeviceSw, teid);
   RemoveTrafficRules(switchDeviceHw, teid);
+  RemoveTrafficRules(switchDeviceUl, teid);
+  RemoveTrafficRules(switchDeviceDl, teid);
 
   m_releaseTrace (teid);
   return true;
@@ -501,8 +510,53 @@ CustomController::ConfigureByQoS ()
 void
 CustomController::QoSBalancer()
 {
-
   Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
 }
+
+void
+CustomController::MoveToHWSwitch(uint32_t teid)
+{
+    InstallTrafficRules(switchDeviceHw, teid);
+    Simulator::Schedule(Seconds(1), &CustomController::RemoveTrafficRules, this,
+     switchDeviceSw, teid);
+
+
+    Ipv4Address ipv4addr = m_teidAddr[teid];
+
+  // Estamos considerando os valores manualmente adicionados ao TEID para
+  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
+  bool ehTcp = (teid & 0xF) <= 3;
+  uint16_t port = teid + 10000;
+
+  // Se o tráfego não foi bloqueado, então vamos instalar as regras de
+  // encaminhamento no switch SW ou HW.
+  std::ostringstream cmdUl, cmdDl;
+
+
+  cmdUl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetTeidHex(teid)
+        << " eth_type=0x800,ip_src=" << ipv4addr;
+  cmdDl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetTeidHex(teid)
+        << " eth_type=0x800,ip_dst=" << ipv4addr;
+
+  if (ehTcp)
+    {
+      // Regras específicas para protocolo TCP
+      cmdUl << ",ip_proto=6,tcp_dst=" << port;
+      cmdDl << ",ip_proto=6,tcp_src=" << port;
+    }
+  else
+    {
+      // Regras específicas para protocolo UDP
+      cmdUl << ",ip_proto=17,udp_dst=" << port;
+      cmdDl << ",ip_proto=17,udp_src=" << port;
+    }
+  cmdUl << " apply:output=" << ul2hwPort;
+  cmdDl << " apply:output=" << dl2hwPort;
+
+    DpctlExecute (switchDeviceUl->GetDatapathId (), cmdUl.str ());
+    DpctlExecute (switchDeviceDl->GetDatapathId (), cmdDl.str ());
+}
+
+
 
 } // namespace ns3
