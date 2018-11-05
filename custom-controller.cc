@@ -20,6 +20,7 @@
  */
 
 #include "custom-controller.h"
+#include <ns3/ofswitch13-module.h>
 #include <iomanip>
 #include <iostream>
 
@@ -514,6 +515,7 @@ CustomController::QoSBalancer()
 {
   Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
   MoveToHWSwitch(lastTeid);
+  GetStatsList(switchDeviceSw);
 }
 
 void
@@ -558,6 +560,19 @@ CustomController::MoveToHWSwitch(uint32_t teid)
 
     DpctlExecute (switchDeviceUl->GetDatapathId (), cmdUl.str ());
     DpctlExecute (switchDeviceDl->GetDatapathId (), cmdDl.str ());
+}
+
+void
+CustomController::GetStatsList(Ptr<OFSwitch13Device> switchDevice)
+{
+  struct flow_table *table = switchDevice->m_datapath->pipeline->tables[0];
+  struct flow_entry *entry;
+
+  LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries)
+  {
+    cout << GetTeidHex(entry->stats->cookie) << " " << entry->stats->byte_count << endl;
+
+  }
 }
 
 
