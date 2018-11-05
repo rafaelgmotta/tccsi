@@ -69,6 +69,11 @@ CustomController::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&CustomController::m_smartRouting),
                    MakeBooleanChecker ())
+    .AddAttribute ("QoSTimeout",
+                   "Interval for QoS routing",
+                   TimeValue(Seconds(15)),
+                   MakeTimeAccessor (&CustomController::m_qoSTimeout),
+                   MakeTimeChecker ())
 
     .AddTraceSource ("Request", "The request trace source.",
                      MakeTraceSourceAccessor (&CustomController::m_requestTrace),
@@ -410,7 +415,7 @@ void
 CustomController::NotifyConstructionCompleted (void)
 {
   NS_LOG_FUNCTION (this);
-
+  Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
   OFSwitch13Controller::NotifyConstructionCompleted ();
 }
 
@@ -497,6 +502,7 @@ void
 CustomController::QoSBalancer()
 {
 
+  Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
 }
 
 } // namespace ns3
