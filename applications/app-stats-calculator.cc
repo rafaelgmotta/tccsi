@@ -26,6 +26,18 @@ using namespace std;
 
 namespace ns3 {
 
+double
+Bps2Kbps (uint64_t bitrate)
+{
+  return static_cast<double> (bitrate) / 1000;
+}
+
+double
+Bps2Kbps (DataRate datarate)
+{
+  return Bps2Kbps (datarate.GetBitRate ());
+}
+
 NS_LOG_COMPONENT_DEFINE ("AppStatsCalculator");
 NS_OBJECT_ENSURE_REGISTERED (AppStatsCalculator);
 
@@ -264,7 +276,7 @@ std::ostream & operator << (std::ostream &os, const AppStatsCalculator &stats)
      << " " << setw (7) << stats.GetRxPackets ()
      << " " << setw (7) << stats.GetLossRatio () * 100
      << " " << setw (8) << stats.GetRxBytes ()
-     << " " << setw (9) << (double)(stats.GetRxThroughput ().GetBitRate ()) / 1000;
+     << " " << setw (9) << Bps2Kbps (stats.GetRxThroughput ().GetBitRate ());
   return os;
 }
 

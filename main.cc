@@ -49,7 +49,7 @@ static ns3::GlobalValue
 // Number of client hosts in the simulation.
 static ns3::GlobalValue
   g_numHosts ("NumHosts", "Number of client hosts.",
-              ns3::UintegerValue (4),
+              ns3::UintegerValue (1),
               ns3::MakeUintegerChecker<uint16_t> ());
 
 void ForceDefaults  ();
@@ -64,7 +64,7 @@ main (int argc, char *argv[])
   bool        pcap     = false;
   bool        ofsLog   = false;
   uint32_t    progress = 0;
-  uint32_t    simTime  = 250;
+  uint32_t    simTime  = 500;
   std::string prefix   = "";
 
   // Parse command line arguments
@@ -114,10 +114,10 @@ main (int argc, char *argv[])
   // Create the simulation scenario.
   NS_LOG_INFO ("Creating simulation scenario...");
 
-  // Configure the CsmaHelper to connect OpenFlow switches (40KM Fiber cable)
+  // Configure the CsmaHelper to connect OpenFlow switches (2KM Fiber cable)
   CsmaHelper csmaHelper;
-  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Mbps")));
-  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (200)));
+  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (10)));
 
   // Create the OpenFlow helper.
   Ptr<OFSwitch13InternalHelper> of13Helper =
@@ -144,21 +144,25 @@ main (int argc, char *argv[])
 
   // Configure switch nodes UL and DL as standard OpenFlow switches.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (3));
-  Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl).Get (0);
-  Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl).Get (0);
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("100Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (65535));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (20)));
+  Ptr<OFSwitch13Device> switchDeviceUl = of13Helper->InstallSwitch (switchNodeUl);
+  Ptr<OFSwitch13Device> switchDeviceDl = of13Helper->InstallSwitch (switchNodeDl);
 
   // Configure switch node HW as a hardware-based OpenFlow switch.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
-  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("1Gbps"));
-  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (512));
-  Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw).Get (0);
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("2Gbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (1024));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (20)));
+  Ptr<OFSwitch13Device> switchDeviceHw = of13Helper->InstallSwitch (switchNodeHw);
 
   // Configure switch node SW as a software-based OpenFlow switch.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
-  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("10Mbps"));
-  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (10000));
-  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (100)));
-  Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw).Get (0);
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("750Mbps"));
+  of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (8192));
+  of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (160)));
+  Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw);
 
   // Connecting switches.
   NetDeviceContainer hw2ulLink = csmaHelper.Install (switchNodeHw, switchNodeUl);
@@ -213,10 +217,6 @@ main (int argc, char *argv[])
   // Configure IPv4 addresses helper.
   Ipv4AddressHelper ipv4helpr;
   ipv4helpr.SetBase ("10.0.0.0", "255.0.0.0");
-
-  // Configure the CsmaHelper to connect hosts to switches.
-  csmaHelper.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-  csmaHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (0)));
 
   // Connect the single server node to the DL switch.
   NetDeviceContainer dl2svLink = csmaHelper.Install (switchNodeDl, serverNode);
@@ -311,15 +311,6 @@ void ForceDefaults ()
   // 500 ms between them.
   //
   Config::SetDefault ("ns3::TcpSocket::ConnTimeout", TimeValue (MilliSeconds (500)));
-
-  //
-  // The default TCP minimum retransmit timeout value is set to 1 second in
-  // ns-3, according to RFC 6298. However, it takes to long to recover from
-  // lost packets. Linux uses 200 ms as the default value, however, this was
-  // leading to many unnecessary retransmitted packets. We are going to use an
-  // intermediate value.
-  //
-  Config::SetDefault ("ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (500)));
 
   //
   // Increasing the default MTU for virtual network devices, which are used as

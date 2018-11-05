@@ -71,11 +71,6 @@ private:
   void LoadTrace (std::string filename);
 
   /**
-   * \brief Load the default trace.
-   */
-  void LoadDefaultTrace (void);
-
-  /**
    * \brief Start sending the video.
    */
   void SendStream (void);
@@ -99,7 +94,6 @@ private:
   uint16_t                        m_pktSize;          //!< Packet size.
   EventId                         m_sendEvent;        //!< SendPacket event.
   uint32_t                        m_currentEntry;     //!< Current entry.
-  static struct TraceEntry        g_defaultEntries[]; //!< Default trace.
   std::vector<struct TraceEntry>  m_entries;          //!< Trace entries.
 };
 

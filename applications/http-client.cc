@@ -24,7 +24,8 @@
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[Http client teid " << GetTeidHex () << "] ";
+  std::clog << "[" << GetAppName ()                       \
+            << " client teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
@@ -37,16 +38,6 @@ HttpClient::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::HttpClient")
     .SetParent<SvelteClient> ()
     .AddConstructor<HttpClient> ()
-    .AddAttribute ("MaxPages",
-                   "The number of loaded pages threshold to stop application.",
-                   UintegerValue (3),
-                   MakeUintegerAccessor (&HttpClient::m_maxPages),
-                   MakeUintegerChecker<uint16_t> (1))
-    .AddAttribute ("MaxReadingTime",
-                   "The reading time threshold to stop application.",
-                   TimeValue (Seconds (10)),
-                   MakeTimeAccessor (&HttpClient::m_maxReadingTime),
-                   MakeTimeChecker ())
   ;
   return tid;
 }
@@ -56,7 +47,8 @@ HttpClient::HttpClient ()
   m_rxPacket (0),
   m_pagesLoaded (0),
   m_pendingBytes (0),
-  m_pendingObjects (0)
+  m_pendingObjects (0),
+  m_stopEvent (EventId ())
 {
   NS_LOG_FUNCTION (this);
 
@@ -85,6 +77,11 @@ HttpClient::Start ()
 {
   NS_LOG_FUNCTION (this);
 
+  // Schedule the ForceStop method to stop traffic based on traffic length.
+  Time sTime = GetTrafficLength ();
+  m_stopEvent = Simulator::Schedule (sTime, &HttpClient::ForceStop, this);
+  NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
+
   // Chain up to reset statistics, notify server, and fire start trace source.
   SvelteClient::Start ();
 
@@ -107,17 +104,8 @@ HttpClient::DoDispose (void)
   m_readingTimeStream = 0;
   m_readingTimeAdjustStream = 0;
   m_nextRequest.Cancel ();
+  m_stopEvent.Cancel ();
   SvelteClient::DoDispose ();
-}
-
-void
-HttpClient::NotifyConstructionCompleted (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  SetAttribute ("AppName", StringValue ("HttpPage"));
-
-  SvelteClient::NotifyConstructionCompleted ();
 }
 
 void
@@ -125,11 +113,14 @@ HttpClient::ForceStop ()
 {
   NS_LOG_FUNCTION (this);
 
+  // Cancel (possible) pending stop event.
+  m_stopEvent.Cancel ();
+
   // Chain up to set flag and notify server.
   SvelteClient::ForceStop ();
 
   // If we are on the reading time, cancel any further schedulled requests,
-  // close the open socket and call NotifyStop ().  Otherwise, the socket will
+  // close the open socket and call NotifyStop (). Otherwise, the socket will
   // be closed after receiving the current object.
   if (m_nextRequest.IsRunning ())
     {
@@ -290,34 +281,6 @@ HttpClient::SetReadingTime (Ptr<Socket> socket)
   double randomSeconds = std::abs (m_readingTimeStream->GetValue ());
   double adjustSeconds = std::abs (m_readingTimeAdjustStream->GetValue ());
   Time readingTime = Seconds (randomSeconds + adjustSeconds);
-
-  // Limiting reading time to 10000 seconds according to reference paper.
-  if (readingTime > Seconds (10000))
-    {
-      readingTime = Seconds (10000);
-    }
-
-  // Stop application due to reading time threshold.
-  if (readingTime > m_maxReadingTime)
-    {
-      NS_LOG_INFO ("Closing the socket due to reading time threshold.");
-      socket->ShutdownRecv ();
-      socket->Close ();
-      m_socket = 0;
-      NotifyStop (false);
-      return;
-    }
-
-  // Stop application due to max page threshold.
-  if (m_pagesLoaded >= m_maxPages)
-    {
-      NS_LOG_INFO ("Closing the socket due to max page threshold.");
-      socket->ShutdownRecv ();
-      socket->Close ();
-      m_socket = 0;
-      NotifyStop (false);
-      return;
-    }
 
   NS_LOG_INFO ("Set reading time to " << readingTime.GetSeconds () << "s.");
   m_nextRequest = Simulator::Schedule (readingTime, &HttpClient::SendRequest,

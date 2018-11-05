@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2018 University of Campinas (Unicamp)
+ * Copyright (c) 2015 University of Campinas (Unicamp)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,8 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Rafael G. Motta <rafaelgmotta@gmail.com>
- *         Luciano J. Chaves <ljerezchaves@gmail.com>
+ * Author: Luciano Chaves <luciano@lrc.ic.unicamp.br>
  */
 
 #include "traffic-manager.h"
@@ -62,16 +61,16 @@ TrafficManager::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&TrafficManager::m_restartApps),
                    MakeBooleanChecker ())
-    .AddAttribute ("StartAppsAfter",
-                   "The time before starting the applications.",
+    .AddAttribute ("StartAppsAt",
+                   "The time to start the applications.",
                    TimeValue (Seconds (1)),
-                   MakeTimeAccessor (&TrafficManager::m_startAppsAfter),
-                   MakeTimeChecker ())
-    .AddAttribute ("StopRestartAppsAt",
-                   "The time to disable the RestartApps attribute.",
-                   TimeValue (Seconds (0)),
-                   MakeTimeAccessor (&TrafficManager::m_stopRestartAppsAt),
-                   MakeTimeChecker ())
+                   MakeTimeAccessor (&TrafficManager::m_startAppsAt),
+                   MakeTimeChecker (Seconds (1)))
+    .AddAttribute ("StopAppsAt",
+                   "The time to stop the applications.",
+                   TimeValue (Seconds (400)),
+                   MakeTimeAccessor (&TrafficManager::m_stopAppsAt),
+                   MakeTimeChecker (Time (0)))
   ;
   return tid;
 }
@@ -84,10 +83,7 @@ TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
   // Save the application pointer.
   std::pair<Ptr<SvelteClient>, Time> entry (app, Time ());
   auto ret = m_timeByApp.insert (entry);
-  if (ret.second == false)
-    {
-      NS_FATAL_ERROR ("Can't save application pointer " << app);
-    }
+  NS_ABORT_MSG_IF (ret.second == false, "Error when saving application.");
 
   // Connect to AppStop and AppError trace sources.
   app->TraceConnectWithoutContext (
@@ -96,7 +92,7 @@ TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
     "AppError", MakeCallback (&TrafficManager::NotifyAppStop, this));
 
   // Schedule the first start attempt for this application.
-  Time firstTry = m_startAppsAfter;
+  Time firstTry = m_startAppsAt;
   firstTry += Seconds (std::abs (m_poissonRng->GetValue ()));
   Simulator::Schedule (firstTry, &TrafficManager::AppStartTry, this, app);
   NS_LOG_INFO ("First start attempt for app " << app->GetAppName () <<
@@ -104,18 +100,19 @@ TrafficManager::AddSvelteClient (Ptr<SvelteClient> app)
 }
 
 void
-TrafficManager::SetImsi (uint64_t value)
-{
-  NS_LOG_FUNCTION (this << value);
-
-  m_imsi = value;
-}
-
-
-void
 TrafficManager::SetController (Ptr<CustomController> controller)
 {
+  NS_LOG_FUNCTION (this << controller);
+
   m_ctrlApp = controller;
+}
+
+void
+TrafficManager::SetImsi (uint64_t imsi)
+{
+  NS_LOG_FUNCTION (this << imsi);
+
+  m_imsi = imsi;
 }
 
 void
@@ -133,12 +130,11 @@ TrafficManager::NotifyConstructionCompleted ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Schedule the stopTime for applications.
-  if (!m_stopRestartAppsAt.IsZero ())
+  // Schedule the stop time for restarting applications.
+  if (!m_stopAppsAt.IsZero ())
     {
-      Simulator::Schedule (
-        m_stopRestartAppsAt, &TrafficManager::SetAttribute, this,
-        "RestartApps", BooleanValue (false));
+      Simulator::Schedule (m_stopAppsAt, &TrafficManager::SetAttribute, this,
+                           "RestartApps", BooleanValue (false));
     }
 
   Object::NotifyConstructionCompleted ();
@@ -152,6 +148,13 @@ TrafficManager::AppStartTry (Ptr<SvelteClient> app)
   NS_ASSERT_MSG (!app->IsActive (), "Can't start an active application.");
   NS_LOG_INFO ("Attempt to start app " << app->GetNameTeid ());
 
+  // Check the stop time before starting the application.
+  if (!m_stopAppsAt.IsZero () && Simulator::Now () > m_stopAppsAt)
+    {
+      NS_LOG_INFO ("Application start try aborted by the stop time.");
+      return;
+    }
+
   // Before requesting for resources and starting the application, let's set
   // the next start attempt for this same application. Depending on the next
   // start attempt time, the application will be forced to stops itself to
@@ -159,7 +162,8 @@ TrafficManager::AppStartTry (Ptr<SvelteClient> app)
   SetNextAppStartTry (app);
 
   bool authorized = true;
-  if (app->GetTeid () != m_defaultTeid)
+  uint32_t teid = app->GetTeid ();
+  if (teid != m_defaultTeid)
     {
       // No resource request for traffic over default bearer.
       authorized = m_ctrlApp->DedicatedBearerRequest (app, m_imsi);
@@ -171,7 +175,7 @@ TrafficManager::AppStartTry (Ptr<SvelteClient> app)
       // Schedule the application start for +1 second.
       Simulator::Schedule (Seconds (1), &SvelteClient::Start, app);
       NS_LOG_INFO ("App " << app->GetNameTeid () << " will start in +1 sec.");
-      if (app->GetMaxOnTime ().IsZero () == false)
+      if (!app->GetMaxOnTime ().IsZero ())
         {
           NS_LOG_INFO ("App maximum duration set to " <<
                        app->GetMaxOnTime ().GetSeconds () << "s.");
@@ -185,8 +189,8 @@ TrafficManager::NotifyAppStop (Ptr<SvelteClient> app)
   NS_LOG_FUNCTION (this << app);
 
   // No resource release for traffic over default bearer.
-  uint32_t appTeid = app->GetTeid ();
-  if (appTeid != m_defaultTeid)
+  uint32_t teid = app->GetTeid ();
+  if (teid != m_defaultTeid)
     {
       // Schedule the resource release procedure for +1 second.
       Simulator::Schedule (

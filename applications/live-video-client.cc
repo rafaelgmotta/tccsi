@@ -23,7 +23,8 @@
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[LiveVid client teid " << GetTeidHex () << "] ";
+  std::clog << "[" << GetAppName ()                       \
+            << " client teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
@@ -36,19 +37,6 @@ LiveVideoClient::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::LiveVideoClient")
     .SetParent<SvelteClient> ()
     .AddConstructor<LiveVideoClient> ()
-    //
-    // For traffic length, we are considering a statistic that the majority of
-    // YouTube brand videos are somewhere between 31 and 120 seconds long. So
-    // we are using the average length of 1min 30sec, with 15sec stdev. See
-    // http://tinyurl.com/q5xkwnn and http://tinyurl.com/klraxum for more
-    // information on this topic.
-    //
-    .AddAttribute ("TrafficLength",
-                   "A random variable used to pick the traffic length [s].",
-                   StringValue (
-                     "ns3::NormalRandomVariable[Mean=90.0|Variance=225.0]"),
-                   MakePointerAccessor (&LiveVideoClient::m_lengthRng),
-                   MakePointerChecker <RandomVariableStream> ())
   ;
   return tid;
 }
@@ -69,9 +57,8 @@ LiveVideoClient::Start ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Schedule the ForceStop method to stop traffic generation on server side
-  // based on video length.
-  Time sTime = Seconds (std::abs (m_lengthRng->GetValue ()));
+  // Schedule the ForceStop method to stop traffic based on traffic length.
+  Time sTime = GetTrafficLength ();
   m_stopEvent = Simulator::Schedule (sTime, &LiveVideoClient::ForceStop, this);
   NS_LOG_INFO ("Set traffic length to " << sTime.GetSeconds () << "s.");
 
@@ -84,19 +71,8 @@ LiveVideoClient::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
-  m_lengthRng = 0;
   m_stopEvent.Cancel ();
   SvelteClient::DoDispose ();
-}
-
-void
-LiveVideoClient::NotifyConstructionCompleted (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  SetAttribute ("AppName", StringValue ("LivVideo"));
-
-  SvelteClient::NotifyConstructionCompleted ();
 }
 
 void

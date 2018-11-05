@@ -25,12 +25,12 @@
 #include <ns3/lte-module.h>
 #include <ns3/network-module.h>
 #include <ns3/internet-module.h>
-#include "applications/application-helper.h"
+#include "application-helper.h"
 
 namespace ns3 {
 
-class TrafficManager;
 class CustomController;
+class TrafficManager;
 
 /**
  * \ingroup svelte
@@ -108,15 +108,15 @@ private:
   void InstallAppDefault (ApplicationHelper& helper, uint32_t teid);
 
   // Traffic helper.
-  static uint16_t             m_port;             //!< Port numbers for apps.
   Ptr<CustomController>       m_controller;       //!< OpenFlow controller.
+  static uint16_t             m_port;             //!< Port numbers for apps.
 
   // Traffic manager.
   ObjectFactory               m_managerFac;       //!< Traffic manager factory.
   Ptr<RandomVariableStream>   m_poissonRng;       //!< Inter-arrival traffic.
   bool                        m_restartApps;      //!< Continuous restart apps.
-  Time                        m_startAppsAfter;   //!< Time before start apps.
-  Time                        m_stopRestartAppsAt; //!< Stop restart apps time.
+  Time                        m_startAppsAt;      //!< Time to start apps.
+  Time                        m_stopAppsAt;       //!< Time to stop apps.
 
   // Enabled applications.
   bool                        m_dftHttpPage;      //!< Non-GBR default HTTP.
@@ -144,12 +144,12 @@ private:
   ApplicationHelper           m_voipCallHelper;   //!< VoIP call helper.
 
   // Temporary variables used only when installing applications.
-  Ptr<TrafficManager>         m_ueManager;        //!< Traffic manager obj.
+  NodeContainer               m_ueNodes;          //!< Client nodes.
   Ptr<Node>                   m_webNode;          //!< Server node.
   Ipv4Address                 m_webAddr;          //!< Server address.
-  Ptr<Node>                   m_ueNode;           //!< Client node.
-  Ipv4Address                 m_ueAddr;           //!< Client address.
-  NodeContainer               m_ueContainer;      //!< Client nodes.
+  Ptr<TrafficManager>         t_ueManager;        //!< Traffic manager.
+  Ptr<Node>                   t_ueNode;           //!< Client node.
+  Ipv4Address                 t_ueAddr;           //!< Client address.
 
   // Video traces.
   Ptr<UniformRandomVariable>  m_gbrVidRng;        //!< GBR random live video.

@@ -28,6 +28,14 @@
 
 namespace ns3 {
 
+std::string
+GetUint32Hex (uint32_t value)
+{
+  char valueStr [11];
+  sprintf (valueStr, "0x%08x", value);
+  return std::string (valueStr);
+}
+
 NS_LOG_COMPONENT_DEFINE ("SvelteClient");
 NS_OBJECT_ENSURE_REGISTERED (SvelteClient);
 
@@ -55,14 +63,19 @@ SvelteClient::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::SvelteClient")
     .SetParent<Application> ()
     .AddConstructor<SvelteClient> ()
-    .AddAttribute ("MaxOnTime", "A hard duration time threshold.",
-                   TimeValue (Time ()),
-                   MakeTimeAccessor (&SvelteClient::m_maxOnTime),
-                   MakeTimeChecker ())
     .AddAttribute ("AppName", "The application name.",
                    StringValue ("NoName"),
                    MakeStringAccessor (&SvelteClient::m_name),
                    MakeStringChecker ())
+    .AddAttribute ("MaxOnTime", "A hard duration time threshold.",
+                   TimeValue (Time ()),
+                   MakeTimeAccessor (&SvelteClient::m_maxOnTime),
+                   MakeTimeChecker ())
+    .AddAttribute ("TrafficLength",
+                   "A random variable used to pick the traffic length [s].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=30.0]"),
+                   MakePointerAccessor (&SvelteClient::m_lengthRng),
+                   MakePointerChecker <RandomVariableStream> ())
 
     .AddAttribute ("ServerAddress", "The server socket address.",
                    AddressValue (),
@@ -154,9 +167,7 @@ std::string
 SvelteClient::GetTeidHex (void) const
 {
   // No log to avoid infinite recursion.
-  char valueStr[11];
-  sprintf (valueStr, "0x%08x", m_teid);
-  return std::string (valueStr);
+  return GetUint32Hex (m_teid);
 }
 
 Ptr<SvelteServer>
@@ -250,6 +261,7 @@ SvelteClient::DoDispose (void)
   NS_LOG_FUNCTION (this);
 
   m_appStats = 0;
+  m_lengthRng = 0;
   m_socket = 0;
   m_serverApp = 0;
   m_forceStop.Cancel ();
@@ -270,6 +282,14 @@ SvelteClient::ForceStop ()
   // Notify the server.
   NS_ASSERT_MSG (m_serverApp, "Server application undefined.");
   m_serverApp->NotifyForceStop ();
+}
+
+Time
+SvelteClient::GetTrafficLength ()
+{
+  NS_LOG_FUNCTION (this);
+
+  return Seconds (std::abs (m_lengthRng->GetValue ()));
 }
 
 void

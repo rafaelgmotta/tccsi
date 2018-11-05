@@ -22,7 +22,8 @@
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT \
-  std::clog << "[BuffVid client teid " << GetTeidHex () << "] ";
+  std::clog << "[" << GetAppName ()                       \
+            << " client teid " << GetTeidHex () << "] ";
 
 namespace ns3 {
 
@@ -77,16 +78,6 @@ BufferedVideoClient::DoDispose (void)
 
   m_rxPacket = 0;
   SvelteClient::DoDispose ();
-}
-
-void
-BufferedVideoClient::NotifyConstructionCompleted (void)
-{
-  NS_LOG_FUNCTION (this);
-
-  SetAttribute ("AppName", StringValue ("BufVideo"));
-
-  SvelteClient::NotifyConstructionCompleted ();
 }
 
 void
@@ -215,6 +206,10 @@ BufferedVideoClient::SendRequest (Ptr<Socket> socket, std::string url)
   httpHeaderRequest.SetRequestMethod ("GET");
   httpHeaderRequest.SetRequestUrl (url);
   NS_LOG_DEBUG ("Request for URL " << url);
+
+  // The client is the one responsible for adjusting traffic length.
+  std::string lengthStr = std::to_string (GetTrafficLength ().GetSeconds ());
+  httpHeaderRequest.SetHeaderField ("TrafficLength", lengthStr + "s");
 
   Ptr<Packet> packet = Create<Packet> ();
   packet->AddHeader (httpHeaderRequest);

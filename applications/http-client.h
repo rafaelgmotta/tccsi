@@ -62,9 +62,6 @@ protected:
   // Inherited from Object.
   virtual void DoDispose (void);
 
-  // Inherited from ObjectBase.
-  virtual void NotifyConstructionCompleted (void);
-
   // Inherited from SvelteClient.
   void ForceStop ();
 
@@ -100,8 +97,6 @@ private:
    */
   void SetReadingTime (Ptr<Socket> socket);
 
-  uint16_t                     m_maxPages;                //!< Pages thres
-  Time                         m_maxReadingTime;          //!< Reading thres
   EventId                      m_nextRequest;             //!< Next request
   Ptr<Packet>                  m_rxPacket;                //!< RX packet
   uint16_t                     m_pagesLoaded;             //!< Pages loaded
@@ -109,6 +104,7 @@ private:
   uint32_t                     m_pendingObjects;          //!< Pending objects
   Ptr<LogNormalRandomVariable> m_readingTimeStream;       //!< Reading time
   Ptr<UniformRandomVariable>   m_readingTimeAdjustStream; //!< Time adjust
+  EventId                      m_stopEvent;               //!< Stop event.
 };
 
 } // Namespace ns3

@@ -49,9 +49,6 @@ protected:
   // Inherited from Object.
   virtual void DoDispose (void);
 
-  // Inherited from ObjectBase.
-  virtual void NotifyConstructionCompleted (void);
-
   // Inherited from SvelteClient.
   void ForceStop ();
 
@@ -67,7 +64,6 @@ private:
   void ReadPacket (Ptr<Socket> socket);
 
   EventId                     m_stopEvent;    //!< Stop event.
-  Ptr<RandomVariableStream>   m_lengthRng;    //!< Random video length.
 };
 
 } // Namespace ns3

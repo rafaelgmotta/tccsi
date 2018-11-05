@@ -96,7 +96,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   double processing = switchDevice->GetProcessingUsage ();
 
   // Se uso de tabela excede o limiar de bloqueio, então bloqueia o tráfego.
-  if (usage > usageLimit)
+  if (usage > m_blockThs)
     {
       m_requestTrace (teid, false);
       return false;
@@ -104,7 +104,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 
   // Se uso de processamento excede o limiar de bloqueio, a decisão do bloqueio
   // se baseia no atributo de política de bloqueio.
-  if (m_blockPol && processing > processingLimit)
+  if (m_blockPol && processing > m_blockThs)
     {
       m_requestTrace (teid, false);
       return false;
