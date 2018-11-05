@@ -31,6 +31,7 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("CustomController");
 NS_OBJECT_ENSURE_REGISTERED (CustomController);
+uint32_t lastTeid;
 std::string
 GetTeidHex (uint32_t value)
 {
@@ -135,6 +136,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
     }
 
   InstallTrafficRules(switchDevice,teid);
+  lastTeid = teid;
 
   m_requestTrace (teid, true);
   return true;
@@ -511,6 +513,7 @@ void
 CustomController::QoSBalancer()
 {
   Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
+  MoveToHWSwitch(lastTeid);
 }
 
 void
