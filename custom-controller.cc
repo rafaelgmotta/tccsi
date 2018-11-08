@@ -118,11 +118,11 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   uint32_t teid = app->GetTeid ();
 
   // Verifica os recursos disponíveis no switch (processamento e uso de tabelas)
-  double usage = switchDevice->GetFlowTableUsage (0);
-  double processing = switchDevice->GetProcessingUsage ();
+  double tableUse = switchDevice->GetFlowTableUsage (0);
+  double cpuUse = switchDevice->GetCpuUsage ();
 
   // Se uso de tabela excede o limiar de bloqueio, então bloqueia o tráfego.
-  if (usage > m_blockThs)
+  if (tableUse > m_blockThs)
     {
       m_requestTrace (teid, false);
       return false;
@@ -130,7 +130,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 
   // Se uso de processamento excede o limiar de bloqueio, a decisão do bloqueio
   // se baseia no atributo de política de bloqueio.
-  if (m_blockPol && processing > m_blockThs)
+  if (m_blockPol && cpuUse > m_blockThs)
     {
       m_requestTrace (teid, false);
       return false;
@@ -565,7 +565,7 @@ CustomController::MoveToHWSwitch(uint32_t teid)
 void
 CustomController::GetStatsList(Ptr<OFSwitch13Device> switchDevice)
 {
-  struct flow_table *table = switchDevice->m_datapath->pipeline->tables[0];
+  struct flow_table *table = switchDevice->GetDatapathStruct ()->pipeline->tables[0];
   struct flow_entry *entry;
 
   LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries)
