@@ -121,7 +121,6 @@ private:
   void InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
   void RemoveTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
   void MoveToHWSwitch(uint32_t teid);
-  void GetStatsList(Ptr<OFSwitch13Device> switchDevice);
 
   Ptr<OFSwitch13Device> switchDeviceUl;     //!< UL switch device.
   Ptr<OFSwitch13Device> switchDeviceDl;     //!< DL switch device.

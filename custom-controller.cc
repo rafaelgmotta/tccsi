@@ -24,6 +24,11 @@
 #include <iomanip>
 #include <iostream>
 
+#include <map>
+#include <set>
+#include <algorithm>
+#include <functional>
+
 #define COOKIE_STRICT_MASK_STR  "0xFFFFFFFFFFFFFFFF"
 
 using namespace std;
@@ -510,12 +515,69 @@ CustomController::ConfigureByQoS ()
   }
 }
 
+// Declaring the type of Predicate that accepts 2 pairs and return a bool
+  typedef std::function<bool(std::pair<uint32_t, DataRate>, std::pair<uint32_t, DataRate>)> Comparator;
+ 
+  // Defining a lambda function to compare two pairs. It will compare two pairs using second field
+  Comparator compFunctor =
+      [](std::pair<uint32_t, DataRate> elem1 ,std::pair<uint32_t, DataRate> elem2)
+      {
+        return elem1.second > elem2.second;
+      };
+
+
 void
 CustomController::QoSBalancer()
 {
   Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
   MoveToHWSwitch(lastTeid);
-  GetStatsList(switchDeviceSw);
+
+  struct flow_table *table = switchDeviceSw->GetDatapathStruct ()->pipeline->tables[0];
+  struct flow_entry *entry;
+  struct ofl_flow_stats *stats;
+  Time now = Simulator::Now();
+  bool primeiro = true;
+  double bytes;
+  std::map<uint32_t, DataRate> mapaVazao;
+
+  LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries)
+  {
+    stats = entry->stats;
+    Time created = MilliSeconds(entry->created);
+    Time active = now - created;
+    if(primeiro){
+      bytes = stats->byte_count;
+      primeiro = false;
+      continue;
+    }
+    bytes += stats->byte_count;
+    primeiro = true;
+
+    DataRate vazao(bytes*8 / active.GetSeconds());
+    mapaVazao[entry->stats->cookie] = vazao;
+    cout << entry->created << " " << GetTeidHex(entry->stats->cookie) << " bytes: " << bytes 
+          << " tempo ativo: " << active.GetSeconds() << " vazao: " << vazao << endl;
+
+  }
+  uint32_t  HwFree = 
+    (switchDeviceHw->GetFlowTableSize(0) * m_blockThs - switchDeviceHw->GetFlowTableEntries(0))/2;
+
+
+    // Declaring a set that will store the pairs using above comparision logic
+    std::set<std::pair<uint32_t, DataRate>, Comparator> setOfWords(
+    mapaVazao.begin(), mapaVazao.end(), compFunctor);
+
+    // Iterate over a set using range base for loop
+    // It will display the items in sorted order of values
+    for (auto element : setOfWords){
+      std::cout << element.first << " :: " << element.second << std::endl;
+      if(HwFree > 1){
+        MoveToHWSwitch(element.first);
+        HwFree--;
+      }
+
+    }
+
 }
 
 void
@@ -560,19 +622,6 @@ CustomController::MoveToHWSwitch(uint32_t teid)
 
     DpctlExecute (switchDeviceUl->GetDatapathId (), cmdUl.str ());
     DpctlExecute (switchDeviceDl->GetDatapathId (), cmdDl.str ());
-}
-
-void
-CustomController::GetStatsList(Ptr<OFSwitch13Device> switchDevice)
-{
-  struct flow_table *table = switchDevice->GetDatapathStruct ()->pipeline->tables[0];
-  struct flow_entry *entry;
-
-  LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries)
-  {
-    cout << GetTeidHex(entry->stats->cookie) << " " << entry->stats->byte_count << endl;
-
-  }
 }
 
 
