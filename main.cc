@@ -159,7 +159,7 @@ main (int argc, char *argv[])
 
   // Configure switch node SW as a software-based OpenFlow switch.
   of13Helper->SetDeviceAttribute ("PipelineTables", UintegerValue (1));
-  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("750Mbps"));
+  of13Helper->SetDeviceAttribute ("ProcessingCapacity", StringValue ("300Mbps"));
   of13Helper->SetDeviceAttribute ("FlowTableSize", UintegerValue (8192));
   of13Helper->SetDeviceAttribute ("TcamDelay", TimeValue (MicroSeconds (160)));
   Ptr<OFSwitch13Device> switchDeviceSw = of13Helper->InstallSwitch (switchNodeSw);
