@@ -92,7 +92,7 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
   uint32_t teid = app->GetTeid ();
   Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
-  m_teidAddr[teid] = ipv4addr;
+  m_teidAddr [teid] = ipv4addr;
 
   // Definindo o switch (HW/SW) que irá receber este tráfego.
   Ptr<OFSwitch13Device> switchDevice;
@@ -457,7 +457,8 @@ CustomController::InstallTrafficRules (Ptr<OFSwitch13Device> switchDevice,
 {
   NS_LOG_FUNCTION (this << switchDevice << teid);
 
-  Ipv4Address ipv4addr = m_teidAddr[teid];
+  // Recuperando o IP do cliente.
+  Ipv4Address ipv4addr = m_teidAddr [teid];
 
   // Estamos considerando os valores manualmente adicionados ao TEID para
   // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
@@ -517,36 +518,36 @@ CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
   Simulator::Schedule (Seconds (1), &CustomController::RemoveTrafficRules,
                        this, srcSwitchDevice, teid);
 
-  // Vamos atualizar
-  Ipv4Address ipv4addr = m_teidAddr[teid];
+  // Instalar regras com maior prioridade nos switches UL e DL.
+
+ // Recuperando o IP do cliente.
+  Ipv4Address ipv4addr = m_teidAddr [teid];
 
   // Estamos considerando os valores manualmente adicionados ao TEID para
   // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
-  bool ehTcp = (teid & 0xF) <= 3;
+  bool tcpApp = (teid & 0xF) <= 3;
   uint16_t port = teid + 10000;
 
-  // Se o tráfego não foi bloqueado, então vamos instalar as regras de
-  // encaminhamento no switch SW ou HW.
+ // Instalar as regras identificando o trafego pelo teid no cookie.
   std::ostringstream cmdUl, cmdDl;
-
-
   cmdUl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetUint32Hex (teid)
         << " eth_type=0x800,ip_src=" << ipv4addr;
   cmdDl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetUint32Hex (teid)
         << " eth_type=0x800,ip_dst=" << ipv4addr;
 
-  if (ehTcp)
+  if (tcpApp)
     {
-      // Regras específicas para protocolo TCP
+      // Regras específicas para protocolo TCP.
       cmdUl << ",ip_proto=6,tcp_dst=" << port;
       cmdDl << ",ip_proto=6,tcp_src=" << port;
     }
   else
     {
-      // Regras específicas para protocolo UDP
+      // Regras específicas para protocolo UDP.
       cmdUl << ",ip_proto=17,udp_dst=" << port;
       cmdDl << ",ip_proto=17,udp_src=" << port;
     }
+    
   cmdUl << " apply:output=" << ul2hwPort;
   cmdDl << " apply:output=" << dl2hwPort;
 
