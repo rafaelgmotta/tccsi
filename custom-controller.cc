@@ -520,7 +520,7 @@ CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
 
   // Instalar regras com maior prioridade nos switches UL e DL.
 
- // Recuperando o IP do cliente.
+  // Recuperando o IP do cliente.
   Ipv4Address ipv4addr = m_teidAddr [teid];
 
   // Estamos considerando os valores manualmente adicionados ao TEID para
@@ -528,7 +528,7 @@ CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
   bool tcpApp = (teid & 0xF) <= 3;
   uint16_t port = teid + 10000;
 
- // Instalar as regras identificando o trafego pelo teid no cookie.
+  // Instalar as regras identificando o trafego pelo teid no cookie.
   std::ostringstream cmdUl, cmdDl;
   cmdUl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetUint32Hex (teid)
         << " eth_type=0x800,ip_src=" << ipv4addr;
@@ -547,7 +547,7 @@ CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
       cmdUl << ",ip_proto=17,udp_dst=" << port;
       cmdDl << ",ip_proto=17,udp_src=" << port;
     }
-    
+
   cmdUl << " apply:output=" << ul2hwPort;
   cmdDl << " apply:output=" << dl2hwPort;
 
