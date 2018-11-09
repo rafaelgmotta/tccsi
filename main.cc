@@ -281,9 +281,10 @@ main (int argc, char *argv[])
   // Run the simulation.
   std::cout << "Simulating..." << std::endl;
   EnableProgress (progress);
-  Simulator::Stop (Seconds (simTime));
+  Simulator::Stop (Seconds (simTime + 1));
   Simulator::Run ();
   Simulator::Destroy ();
+  std::cout << "END OK" << std::endl;
 }
 
 void ForceDefaults ()
