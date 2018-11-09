@@ -379,17 +379,17 @@ EnableVerbose (bool enable)
       LogComponentEnable ("TrafficStatistics",        logLevelAll);
 
       // Applications.
-      LogComponentEnable ("AppStatsCalculator",       logLevelWarnInfo);
-      LogComponentEnable ("BufferedVideoClient",      logLevelWarnInfo);
-      LogComponentEnable ("BufferedVideoServer",      logLevelWarnInfo);
-      LogComponentEnable ("HttpClient",               logLevelWarnInfo);
-      LogComponentEnable ("HttpServer",               logLevelWarnInfo);
-      LogComponentEnable ("LiveVideoClient",          logLevelWarnInfo);
-      LogComponentEnable ("LiveVideoServer",          logLevelWarnInfo);
-      LogComponentEnable ("SvelteClient",             logLevelWarnInfo);
-      LogComponentEnable ("SvelteServer",             logLevelWarnInfo);
-      LogComponentEnable ("SvelteUdpClient",          logLevelWarnInfo);
-      LogComponentEnable ("SvelteUdpServer",          logLevelWarnInfo);
+      LogComponentEnable ("AppStatsCalculator",       logLevelWarn);
+      LogComponentEnable ("BufferedVideoClient",      logLevelWarn);
+      LogComponentEnable ("BufferedVideoServer",      logLevelWarn);
+      LogComponentEnable ("HttpClient",               logLevelWarn);
+      LogComponentEnable ("HttpServer",               logLevelWarn);
+      LogComponentEnable ("LiveVideoClient",          logLevelWarn);
+      LogComponentEnable ("LiveVideoServer",          logLevelWarn);
+      LogComponentEnable ("SvelteClient",             logLevelWarn);
+      LogComponentEnable ("SvelteServer",             logLevelWarn);
+      LogComponentEnable ("SvelteUdpClient",          logLevelWarn);
+      LogComponentEnable ("SvelteUdpServer",          logLevelWarn);
 
       // OFSwitch13 module components.
       LogComponentEnable ("OFSwitch13Controller",     logLevelWarn);
