@@ -32,6 +32,8 @@ namespace ns3 {
 
 class SvelteServer;
 
+std::string GetUint32Hex (uint32_t value);
+
 /**
  * \ingroup svelte
  * \defgroup svelteApps Applications

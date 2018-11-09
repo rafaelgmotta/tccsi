@@ -116,34 +116,62 @@ private:
    * Configure internal routing based on IP address.
    */
   void ConfigureByIp ();
-  void ConfigureByQoS();
-  void QoSBalancer();
-  void InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
-  void RemoveTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
-  void MoveToHWSwitch(uint32_t teid);
 
-  Ptr<OFSwitch13Device> switchDeviceUl;     //!< UL switch device.
-  Ptr<OFSwitch13Device> switchDeviceDl;     //!< DL switch device.
-  Ptr<OFSwitch13Device> switchDeviceHw;     //!< HW switch device.
-  Ptr<OFSwitch13Device> switchDeviceSw;     //!< SW switch device.
+  /**
+   * Configure internal routing based on QoS parameters.
+   */
+  void ConfigureByQos ();
 
-  uint32_t ul2hwPort;     //!< Porta no UL para o HW.
-  uint32_t ul2swPort;     //!< Porta no UL para o SW.
-  uint32_t dl2hwPort;     //!< Porta no DL para o HW.
-  uint32_t dl2swPort;     //!< Porta no DL para o SW.
-  uint32_t hw2ulPort;     //!< Porta no HW para o UL.
-  uint32_t hw2dlPort;     //!< Porta no HW para o DL.
-  uint32_t sw2ulPort;     //!< Porta no SW para o UL.
-  uint32_t sw2dlPort;     //!< Porta no SW para o DL.
+  /**
+   * Controller timeout operation.
+   */
+  void ControllerTimeout ();
 
-  double   m_blockThs;     //!< Taxa de bloqueio.
-  bool     m_blockPol;     //!< Política de bloqueio.
-  bool     m_smartRouting; //!< Politica de roteamento.
-  Time     m_qoSTimeout;   //!< Timeout de QoS.
-  std::map<uint32_t, Ipv4Address> m_teidAddr; 
+  /**
+   * Install traffic rules into OpenFlow switch.
+   * \param switchDevice The OpenFlow switch for this traffic.
+   * \param teid The traffic ID.
+   */
+  void InstallTrafficRules (Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
 
-  TracedCallback<uint32_t, bool> m_requestTrace;  //!< Request trace source.
-  TracedCallback<uint32_t>       m_releaseTrace;  //!< Release trace source.
+  /**
+   * Remove traffic rules from OpenFlow switch.
+   * \param switchDevice The OpenFlow switch for this traffic.
+   * \param teid The traffic ID.
+   */
+  void RemoveTrafficRules (Ptr<OFSwitch13Device> switchDevice, uint32_t teid);
+
+  /**
+   * Move traffic rules from one OpenFlow switch to another.
+   * \param srcSwitchDevice The source OpenFlow switch for this traffic.
+   * \param dstSwitchDevice The destination OpenFlow switch for this traffic.
+   * \param teid The traffic ID.
+   */
+  void MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
+                         Ptr<OFSwitch13Device> dstSwitchDevice, uint32_t teid);
+
+  Ptr<OFSwitch13Device>           switchDeviceUl; //!< UL switch device.
+  Ptr<OFSwitch13Device>           switchDeviceDl; //!< DL switch device.
+  Ptr<OFSwitch13Device>           switchDeviceHw; //!< HW switch device.
+  Ptr<OFSwitch13Device>           switchDeviceSw; //!< SW switch device.
+
+  uint32_t                        ul2hwPort;      //!< Porta no UL para o HW.
+  uint32_t                        ul2swPort;      //!< Porta no UL para o SW.
+  uint32_t                        dl2hwPort;      //!< Porta no DL para o HW.
+  uint32_t                        dl2swPort;      //!< Porta no DL para o SW.
+  uint32_t                        hw2ulPort;      //!< Porta no HW para o UL.
+  uint32_t                        hw2dlPort;      //!< Porta no HW para o DL.
+  uint32_t                        sw2ulPort;      //!< Porta no SW para o UL.
+  uint32_t                        sw2dlPort;      //!< Porta no SW para o DL.
+
+  double                          m_blockThs;     //!< Threshold de bloqueio.
+  bool                            m_blockPol;     //!< Política de bloqueio.
+  bool                            m_qosRoute;     //!< Politica de roteamento.
+  Time                            m_timeout;      //!< Timeout do controlador.
+  std::map<uint32_t, Ipv4Address> m_teidAddr;     //!< Mapa TEID / IP cliente.
+
+  TracedCallback<uint32_t, bool>  m_requestTrace; //!< Request trace source.
+  TracedCallback<uint32_t>        m_releaseTrace; //!< Release trace source.
 };
 
 } // namespace ns3

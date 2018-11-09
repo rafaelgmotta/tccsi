@@ -20,16 +20,14 @@
  */
 
 #include "custom-controller.h"
-#include <ns3/ofswitch13-module.h>
-#include <iomanip>
-#include <iostream>
-
-#include <map>
-#include <set>
+#include "applications/svelte-client.h"
 #include <algorithm>
 #include <functional>
-
-#define COOKIE_STRICT_MASK_STR  "0xFFFFFFFFFFFFFFFF"
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <ns3/ofswitch13-module.h>
+#include <set>
 
 using namespace std;
 
@@ -37,14 +35,7 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("CustomController");
 NS_OBJECT_ENSURE_REGISTERED (CustomController);
-uint32_t lastTeid;
-std::string
-GetTeidHex (uint32_t value)
-{
-  char valueStr [11];
-  sprintf (valueStr, "0x%08x", value);
-  return std::string (valueStr);
-}
+
 CustomController::CustomController ()
 {
   NS_LOG_FUNCTION (this);
@@ -72,14 +63,14 @@ CustomController::GetTypeId (void)
                    MakeBooleanAccessor (&CustomController::m_blockPol),
                    MakeBooleanChecker ())
     .AddAttribute ("SmartRouting",
-                   "True for QoS routing",
+                   "True for QoS routing, false for IP routing.",
                    BooleanValue (true),
-                   MakeBooleanAccessor (&CustomController::m_smartRouting),
+                   MakeBooleanAccessor (&CustomController::m_qosRoute),
                    MakeBooleanChecker ())
-    .AddAttribute ("QoSTimeout",
-                   "Interval for QoS routing",
-                   TimeValue(Seconds(15)),
-                   MakeTimeAccessor (&CustomController::m_qoSTimeout),
+    .AddAttribute ("Timeout",
+                   "Controller timeout interval.",
+                   TimeValue (Seconds (15)),
+                   MakeTimeAccessor (&CustomController::m_timeout),
                    MakeTimeChecker ())
 
     .AddTraceSource ("Request", "The request trace source.",
@@ -97,122 +88,68 @@ CustomController::DedicatedBearerRequest (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
-  
-
-  // Na política atual o IP do cliente é utilizado para definir o switch.
-  // IPs pares são enviados para o HW e IP ímpares para o SW.
+  // Salvando o endereço IP do cliente para este TEID.
+  uint32_t teid = app->GetTeid ();
   Ptr<Ipv4> ipv4 = app->GetNode ()->GetObject<Ipv4>();
   Ipv4Address ipv4addr = ipv4->GetAddress (1,0).GetLocal ();
+  m_teidAddr[teid] = ipv4addr;
 
-  m_teidAddr[app->GetTeid()]=ipv4addr;
-
+  // Definindo o switch (HW/SW) que irá receber este tráfego.
   Ptr<OFSwitch13Device> switchDevice;
-
-  if(m_smartRouting)
-  {
-    switchDevice = switchDeviceSw;
-  }
+  if (m_qosRoute)
+    {
+      // Para o roteamento por QoS, o switch padrão é o SW.
+      switchDevice = switchDeviceSw;
+    }
   else
-  {
-    uint32_t ipImpar = ipv4addr.Get () & 1;
-    switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
-  }
-  
+    {
+      // Para o roteamento por IP, o switch SW atende tráfegos de IP ímpar e o
+      // switch HW atende tráfegos de IP par.
+      bool ipImpar = ipv4addr.Get () & 1;
+      switchDevice = ipImpar ? switchDeviceSw : switchDeviceHw;
+    }
 
-  // String representando o TEID em hexadecimal.
-  uint32_t teid = app->GetTeid ();
-
-  // Verifica os recursos disponíveis no switch (processamento e uso de tabelas)
-  double tableUse = switchDevice->GetFlowTableUsage (0);
+  // Verifica os recursos disponíveis no switch (processamento e uso de tabela)
+  double tabUse = switchDevice->GetFlowTableUsage (0);
   double cpuUse = switchDevice->GetCpuUsage ();
 
-  // Se uso de tabela excede o limiar de bloqueio, então bloqueia o tráfego.
-  if (tableUse > m_blockThs)
+  // Bloquear o tráfego se a tabela exceder o limite de bloqueio.
+  if (tabUse > m_blockThs)
     {
       m_requestTrace (teid, false);
       return false;
     }
 
-  // Se uso de processamento excede o limiar de bloqueio, a decisão do bloqueio
-  // se baseia no atributo de política de bloqueio.
-  if (m_blockPol && cpuUse > m_blockThs)
+  // Bloquear o tráfego se o uso de cpu exceder o limite de bloqueio e a
+  // política de bloqueio por excesso de carga estiver ativa.
+  if (cpuUse > m_blockThs && m_blockPol)
     {
       m_requestTrace (teid, false);
       return false;
     }
 
-  InstallTrafficRules(switchDevice,teid);
-  lastTeid = teid;
-
+  // Instalar as regras para este tráfego.
+  InstallTrafficRules (switchDevice, teid);
   m_requestTrace (teid, true);
   return true;
 }
-
-void
-CustomController::InstallTrafficRules(Ptr<OFSwitch13Device> switchDevice, 
-  uint32_t teid)
-{
-  Ipv4Address ipv4addr = m_teidAddr[teid];
-
-  // Estamos considerando os valores manualmente adicionados ao TEID para
-  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
-  bool ehTcp = (teid & 0xF) <= 3;
-  uint16_t port = teid + 10000;
-
-  // Se o tráfego não foi bloqueado, então vamos instalar as regras de
-  // encaminhamento no switch SW ou HW.
-  std::ostringstream cmdUl, cmdDl;
-  cmdUl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetTeidHex(teid)
-        << " eth_type=0x800,ip_src=" << ipv4addr;
-  cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetTeidHex(teid)
-        << " eth_type=0x800,ip_dst=" << ipv4addr;
-
-  if (ehTcp)
-    {
-      // Regras específicas para protocolo TCP
-      cmdUl << ",ip_proto=6,tcp_dst=" << port;
-      cmdDl << ",ip_proto=6,tcp_src=" << port;
-    }
-  else
-    {
-      // Regras específicas para protocolo UDP
-      cmdUl << ",ip_proto=17,udp_dst=" << port;
-      cmdDl << ",ip_proto=17,udp_src=" << port;
-    }
-  cmdUl << " write:group=1";
-  cmdDl << " write:group=2";
-  DpctlExecute (switchDevice->GetDatapathId (), cmdUl.str ());
-  DpctlExecute (switchDevice->GetDatapathId (), cmdDl.str ());
-}
-
 
 bool
 CustomController::DedicatedBearerRelease (Ptr<SvelteClient> app, uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << app << imsi);
 
-  // String representando o TEID em hexadecimal.
+  // Removendo potenciais regras de todos os switches.
   uint32_t teid = app->GetTeid ();
-
-  RemoveTrafficRules(switchDeviceSw, teid);
-  RemoveTrafficRules(switchDeviceHw, teid);
-  RemoveTrafficRules(switchDeviceUl, teid);
-  RemoveTrafficRules(switchDeviceDl, teid);
+  RemoveTrafficRules (switchDeviceSw, teid);
+  RemoveTrafficRules (switchDeviceHw, teid);
+  RemoveTrafficRules (switchDeviceUl, teid);
+  RemoveTrafficRules (switchDeviceDl, teid);
 
   m_releaseTrace (teid);
   return true;
 }
 
-void 
-CustomController::RemoveTrafficRules(Ptr<OFSwitch13Device> switchDevice, uint32_t teid)
-{
-// Remover todas as regras identificadas pelo cookie com o TEID do tráfego.
-  std::ostringstream cmd;
-  cmd << "flow-mod cmd=del"
-      << ",cookie="       << GetTeidHex(teid)
-      << ",cookie_mask="  << COOKIE_STRICT_MASK_STR;
-  DpctlExecute (switchDevice->GetDatapathId (), cmd.str ());
-}
 
 void
 CustomController::NotifyHwSwitch (Ptr<OFSwitch13Device> switchDevice,
@@ -403,16 +340,15 @@ CustomController::NotifyTopologyBuilt ()
 {
   NS_LOG_FUNCTION (this);
 
-  // De acordo com a política de roteamento em vigor, faça a chamada para a
-  // função que instala as regras adequadamente.
-  if(m_smartRouting)
-  {
-    ConfigureByQoS();
-  }
+  // Configura as regras nos switches de acordo com a política de roteamento.
+  if (m_qosRoute)
+    {
+      ConfigureByQos ();
+    }
   else
-  {
-    ConfigureByIp ();
-  }
+    {
+      ConfigureByIp ();
+    }
 }
 
 void
@@ -424,7 +360,7 @@ CustomController::DoDispose ()
   switchDeviceDl = 0;
   switchDeviceHw = 0;
   switchDeviceSw = 0;
-
+  m_teidAddr.clear ();
   OFSwitch13Controller::DoDispose ();
 }
 
@@ -432,7 +368,10 @@ void
 CustomController::NotifyConstructionCompleted (void)
 {
   NS_LOG_FUNCTION (this);
-  Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
+
+  // Escalona a primeira operação de timeout para o controlador.
+  Simulator::Schedule (m_timeout, &CustomController::ControllerTimeout, this);
+
   OFSwitch13Controller::NotifyConstructionCompleted ();
 }
 
@@ -449,9 +388,9 @@ CustomController::ConfigureByIp ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Nesta função vamos instalar as regras de roteamento interno com base no IP
-  // do usuário: IPs pares são enviados para o switch HW e IPs ímpares são
-  // enviados para o switch SW. Observe as regras sempre na tabela 1.
+  // Vamos instalar as regras de roteamento interno com base no IP do usuário:
+  // IPs pares são enviados para o switch HW e IPs ímpares são enviados para o
+  // switch SW. Observe as regras sempre na tabela 1.
 
   // Pacotes originados nos clientes, que estão entrando através do switch UL.
   {
@@ -485,17 +424,15 @@ CustomController::ConfigureByIp ()
 }
 
 void
-CustomController::ConfigureByQoS ()
+CustomController::ConfigureByQos ()
 {
   NS_LOG_FUNCTION (this);
 
-  // Nesta função vamos instalar as regras de roteamento interno sempre no switch de SW.
+  // Vamos instalar as regras de roteamento interno sempre no switch de SW.
 
   // Pacotes originados nos clientes, que estão entrando através do switch UL.
   {
     std::ostringstream cmdSw;
-
-
     cmdSw << "flow-mod cmd=add,prio=64,table=1"
           << " eth_type=0x800"
           << " apply:output=" << ul2swPort;
@@ -506,7 +443,6 @@ CustomController::ConfigureByQoS ()
   // Pacotes originados no servidor, que estão entrando através do switch DL.
   {
     std::ostringstream cmdSw;
-
     cmdSw << "flow-mod cmd=add,prio=64,table=1"
           << " eth_type=0x800"
           << " apply:output=" << dl2swPort;
@@ -515,80 +451,74 @@ CustomController::ConfigureByQoS ()
   }
 }
 
-// Declaring the type of Predicate that accepts 2 pairs and return a bool
-  typedef std::function<bool(std::pair<uint32_t, DataRate>, std::pair<uint32_t, DataRate>)> Comparator;
- 
-  // Defining a lambda function to compare two pairs. It will compare two pairs using second field
-  Comparator compFunctor =
-      [](std::pair<uint32_t, DataRate> elem1 ,std::pair<uint32_t, DataRate> elem2)
-      {
-        return elem1.second > elem2.second;
-      };
-
-
 void
-CustomController::QoSBalancer()
+CustomController::InstallTrafficRules (Ptr<OFSwitch13Device> switchDevice,
+                                       uint32_t teid)
 {
-  Simulator::Schedule(m_qoSTimeout, &CustomController::QoSBalancer, this );
-  MoveToHWSwitch(lastTeid);
+  NS_LOG_FUNCTION (this << switchDevice << teid);
 
-  struct flow_table *table = switchDeviceSw->GetDatapathStruct ()->pipeline->tables[0];
-  struct flow_entry *entry;
-  struct ofl_flow_stats *stats;
-  Time now = Simulator::Now();
-  bool primeiro = true;
-  double bytes;
-  std::map<uint32_t, DataRate> mapaVazao;
+  Ipv4Address ipv4addr = m_teidAddr[teid];
 
-  LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries)
-  {
-    stats = entry->stats;
-    Time created = MilliSeconds(entry->created);
-    Time active = now - created;
-    if(primeiro){
-      bytes = stats->byte_count;
-      primeiro = false;
-      continue;
+  // Estamos considerando os valores manualmente adicionados ao TEID para
+  // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
+  bool tcpApp = (teid & 0xF) <= 3;
+  uint16_t port = teid + 10000;
+
+  // Instalar as regras identificando o trafego pelo teid no cookie.
+  std::ostringstream cmdUl, cmdDl;
+  cmdUl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetUint32Hex (teid)
+        << " eth_type=0x800,ip_src=" << ipv4addr;
+  cmdDl << "flow-mod cmd=add,prio=64,table=0,cookie=" << GetUint32Hex (teid)
+        << " eth_type=0x800,ip_dst=" << ipv4addr;
+
+  if (tcpApp)
+    {
+      // Regras específicas para protocolo TCP.
+      cmdUl << ",ip_proto=6,tcp_dst=" << port;
+      cmdDl << ",ip_proto=6,tcp_src=" << port;
     }
-    bytes += stats->byte_count;
-    primeiro = true;
-
-    DataRate vazao(bytes*8 / active.GetSeconds());
-    mapaVazao[entry->stats->cookie] = vazao;
-    cout << entry->created << " " << GetTeidHex(entry->stats->cookie) << " bytes: " << bytes 
-          << " tempo ativo: " << active.GetSeconds() << " vazao: " << vazao << endl;
-
-  }
-  uint32_t  HwFree = 
-    (switchDeviceHw->GetFlowTableSize(0) * m_blockThs - switchDeviceHw->GetFlowTableEntries(0))/2;
-
-
-    // Declaring a set that will store the pairs using above comparision logic
-    std::set<std::pair<uint32_t, DataRate>, Comparator> setOfWords(
-    mapaVazao.begin(), mapaVazao.end(), compFunctor);
-
-    // Iterate over a set using range base for loop
-    // It will display the items in sorted order of values
-    for (auto element : setOfWords){
-      std::cout << element.first << " :: " << element.second << std::endl;
-      if(HwFree > 1){
-        MoveToHWSwitch(element.first);
-        HwFree--;
-      }
-
+  else
+    {
+      // Regras específicas para protocolo UDP.
+      cmdUl << ",ip_proto=17,udp_dst=" << port;
+      cmdDl << ",ip_proto=17,udp_src=" << port;
     }
 
+  cmdUl << " write:group=1";
+  cmdDl << " write:group=2";
+
+  DpctlExecute (switchDevice->GetDatapathId (), cmdUl.str ());
+  DpctlExecute (switchDevice->GetDatapathId (), cmdDl.str ());
 }
 
 void
-CustomController::MoveToHWSwitch(uint32_t teid)
+CustomController::RemoveTrafficRules (Ptr<OFSwitch13Device> switchDevice,
+                                      uint32_t teid)
 {
-    InstallTrafficRules(switchDeviceHw, teid);
-    Simulator::Schedule(Seconds(1), &CustomController::RemoveTrafficRules, this,
-     switchDeviceSw, teid);
+  NS_LOG_FUNCTION (this << switchDevice << teid);
 
+  // Usar o teid como identificador da regra pelo campo cookie.
+  std::ostringstream cmd;
+  cmd << "flow-mod cmd=del,cookie=" << GetUint32Hex (teid)
+      << ",cookie_mask=0xFFFFFFFFFFFFFFFF";
 
-    Ipv4Address ipv4addr = m_teidAddr[teid];
+  DpctlExecute (switchDevice->GetDatapathId (), cmd.str ());
+}
+
+void
+CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
+                                    Ptr<OFSwitch13Device> dstSwitchDevice,
+                                    uint32_t teid)
+{
+  NS_LOG_FUNCTION (this << srcSwitchDevice << dstSwitchDevice << teid);
+
+  // Instala regras no switch de destino e escalona remoção no switch de origem.
+  InstallTrafficRules (dstSwitchDevice, teid);
+  Simulator::Schedule (Seconds (1), &CustomController::RemoveTrafficRules,
+                       this, srcSwitchDevice, teid);
+
+  // Vamos atualizar
+  Ipv4Address ipv4addr = m_teidAddr[teid];
 
   // Estamos considerando os valores manualmente adicionados ao TEID para
   // identificar a aplicação. As 4 primeiras são TCP, e as demais UDP.
@@ -600,9 +530,9 @@ CustomController::MoveToHWSwitch(uint32_t teid)
   std::ostringstream cmdUl, cmdDl;
 
 
-  cmdUl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetTeidHex(teid)
+  cmdUl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetUint32Hex (teid)
         << " eth_type=0x800,ip_src=" << ipv4addr;
-  cmdDl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetTeidHex(teid)
+  cmdDl << "flow-mod cmd=add,prio=128,table=1,cookie=" << GetUint32Hex (teid)
         << " eth_type=0x800,ip_dst=" << ipv4addr;
 
   if (ehTcp)
@@ -620,10 +550,99 @@ CustomController::MoveToHWSwitch(uint32_t teid)
   cmdUl << " apply:output=" << ul2hwPort;
   cmdDl << " apply:output=" << dl2hwPort;
 
-    DpctlExecute (switchDeviceUl->GetDatapathId (), cmdUl.str ());
-    DpctlExecute (switchDeviceDl->GetDatapathId (), cmdDl.str ());
+  DpctlExecute (switchDeviceUl->GetDatapathId (), cmdUl.str ());
+  DpctlExecute (switchDeviceDl->GetDatapathId (), cmdDl.str ());
 }
 
+// Declarando tipo de par TEID / vazão.
+typedef std::pair<uint32_t, DataRate> TeidThp_t;
 
+// Declarando tipo de função que recever dois pares TeidThp_t e retorna bool.
+typedef std::function<bool (TeidThp_t, TeidThp_t)> TeidThpComp_t;
+
+// Comparador para ordenar o mapa de vazão por tráfego.
+TeidThpComp_t thpComp = [] (TeidThp_t elem1, TeidThp_t elem2)
+  {
+    return elem1.second > elem2.second;
+  };
+
+void
+CustomController::ControllerTimeout ()
+{
+  NS_LOG_FUNCTION (this);
+
+  // Escalona a próxima operação de timeout para o controlador.
+  Simulator::Schedule (m_timeout, &CustomController::ControllerTimeout, this );
+
+  // Para o roteamento por IP não há nada a ser feito aqui.
+  if (!m_qosRoute)
+    {
+      return;
+    }
+
+  // O roteamento é por QoS. Vamos percorrer a tabela do switch SW e montar uma
+  // lista ordenada dos tráfegos com vazão decrescente para que possamos mover
+  // os tráfegos de maior vazão para o switch de HW sem extrapolar sua
+  // capacidade máxima.
+
+  struct datapath *datapath = switchDeviceSw->GetDatapathStruct ();
+  struct flow_table *table = datapath->pipeline->tables[0];
+  struct flow_entry *entry;
+
+  std::map<uint32_t, DataRate> thpByTeid;
+  bool firstRule = true;
+  double bytes;
+
+  // Percorrendo tabela e recuperando informações sobre os tráfegos.
+  LIST_FOR_EACH (entry, struct flow_entry, match_node, &table->match_entries)
+  {
+    struct ofl_flow_stats *stats = entry->stats;
+    Time active = Simulator::Now () - MilliSeconds (entry->created);
+
+    // Temos sempre duas regras para cada tráfego (uplink e downlink).
+    if (firstRule)
+      {
+        bytes = entry->stats->byte_count;
+        firstRule = false;
+        continue;
+      }
+    bytes += stats->byte_count;
+    firstRule = true;
+
+    // Calculando a vazão total para o tráfego.
+    DataRate throughput (bytes * 8 / active.GetSeconds ());
+    thpByTeid [entry->stats->cookie] = throughput;
+    NS_LOG_DEBUG ("Traffic " << entry->stats->cookie <<
+                  " with throughput " << throughput);
+  }
+
+  // Construindo um set com as vazões ordenadas em descrescente.
+  std::set<TeidThp_t, TeidThpComp_t> thpSorted (
+    thpByTeid.begin (), thpByTeid.end (), thpComp);
+
+  // Verificando os recursos disponíveis no switch de HW:
+  uint32_t tabHwFree = (switchDeviceHw->GetFlowTableSize (0) * m_blockThs -
+                        switchDeviceHw->GetFlowTableEntries (0)) / 2;
+  uint64_t bpsHwFree = (switchDeviceHw->GetCpuCapacity ().GetBitRate () * m_blockThs -
+                        switchDeviceHw->GetCpuLoad ().GetBitRate ());
+  NS_LOG_DEBUG ("Resources on HW switch: " << tabHwFree <<
+                " table entries and " << bpsHwFree << " CPU bps free.");
+
+  // Percore a lista de tráfego movendo os primeiros para o switch de HW.
+  for (auto element : thpSorted)
+    {
+      if (!tabHwFree || !bpsHwFree)
+        {
+          // Parar se não houver mais recursos disponíveis no HW.
+          break;
+        }
+
+      // Move o tráfego do switch de SW para o switch de HW.
+      NS_LOG_DEBUG ("Moving traffic " << element.first << " to HW switch.");
+      MoveTrafficRules (switchDeviceSw, switchDeviceHw, element.first);
+      tabHwFree--;
+      bpsHwFree -= element.second.GetBitRate ();
+    }
+}
 
 } // namespace ns3

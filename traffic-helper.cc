@@ -197,7 +197,7 @@ TrafficHelper::NotifyConstructionCompleted ()
   // Saving server metadata.
   NS_ASSERT_MSG (m_webNode->GetNDevices () == 2, "Single device expected.");
   Ptr<NetDevice> webDev = m_webNode->GetDevice (1);
-  
+
 
   Ptr<Ipv4> ipv4 = m_webNode->GetObject<Ipv4> ();
   int32_t ifIndex = ipv4->GetInterfaceForDevice (webDev);
