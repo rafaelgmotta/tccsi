@@ -621,10 +621,12 @@ CustomController::ControllerTimeout ()
     thpByTeid.begin (), thpByTeid.end (), thpComp);
 
   // Verificando os recursos disponíveis no switch de HW:
-  uint32_t tabHwFree = (switchDeviceHw->GetFlowTableSize (0) * m_blockThs -
-                        switchDeviceHw->GetFlowTableEntries (0)) / 2;
-  uint64_t bpsHwFree = (switchDeviceHw->GetCpuCapacity ().GetBitRate () * m_blockThs -
-                        switchDeviceHw->GetCpuLoad ().GetBitRate ());
+  uint32_t tabHwFree =
+    switchDeviceHw->GetFlowTableSize (0) * m_blockThs -
+    switchDeviceHw->GetFlowTableEntries (0);
+  uint64_t bpsHwFree =
+    switchDeviceHw->GetCpuCapacity ().GetBitRate () * m_blockThs -
+    switchDeviceHw->GetCpuLoad ().GetBitRate ();
   NS_LOG_DEBUG ("Resources on HW switch: " << tabHwFree <<
                 " table entries and " << bpsHwFree << " CPU bps free.");
 
@@ -640,7 +642,7 @@ CustomController::ControllerTimeout ()
       // Move o tráfego do switch de SW para o switch de HW.
       NS_LOG_DEBUG ("Moving traffic " << element.first << " to HW switch.");
       MoveTrafficRules (switchDeviceSw, switchDeviceHw, element.first);
-      tabHwFree--;
+      tabHwFree -= 2;
       bpsHwFree -= element.second.GetBitRate ();
     }
 }
