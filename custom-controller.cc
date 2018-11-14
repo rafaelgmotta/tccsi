@@ -515,8 +515,16 @@ CustomController::MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
 
   // Instala regras no switch de destino e escalona remoção no switch de origem.
   InstallTrafficRules (dstSwitchDevice, teid);
+  Simulator::Schedule (MilliSeconds (500), &CustomController::UpdateDlUlRules,
+                       this, teid);
   Simulator::Schedule (Seconds (1), &CustomController::RemoveTrafficRules,
                        this, srcSwitchDevice, teid);
+}
+
+void
+CustomController::UpdateDlUlRules (uint32_t teid)
+{
+  NS_LOG_FUNCTION (this << teid);
 
   // Instalar regras com maior prioridade nos switches UL e DL.
 

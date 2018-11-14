@@ -150,6 +150,12 @@ private:
   void MoveTrafficRules (Ptr<OFSwitch13Device> srcSwitchDevice,
                          Ptr<OFSwitch13Device> dstSwitchDevice, uint32_t teid);
 
+  /**
+   * Update UL and DL rules when moving traffic.
+   * \param teid The traffic ID.
+   */
+  void UpdateDlUlRules (uint32_t teid);
+
   Ptr<OFSwitch13Device>           switchDeviceUl; //!< UL switch device.
   Ptr<OFSwitch13Device>           switchDeviceDl; //!< DL switch device.
   Ptr<OFSwitch13Device>           switchDeviceHw; //!< HW switch device.
