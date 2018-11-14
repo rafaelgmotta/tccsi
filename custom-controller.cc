@@ -634,7 +634,7 @@ CustomController::ControllerTimeout ()
   // Percore a lista de tráfego movendo os primeiros para o switch de HW.
   for (auto element : thpSorted)
     {
-      if (!tabHwFree || !bpsHwFree)
+      if (tabHwFree < 2 || bpsHwFree < element.second.GetBitRate ())
         {
           // Parar se não houver mais recursos disponíveis no HW.
           break;
